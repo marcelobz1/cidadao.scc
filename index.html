@@ -2,60 +2,37 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Radar Cidadão - Santa Cruz do Capibaribe</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Leaflet CSS (para o mapa) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Chart.js (para os gráficos) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Font Awesome (Ícones) - ATUALIZADO -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <!-- Fonte Inter -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-        }
-        #mapa { 
-            height: 500px; 
-            border-radius: 0.5rem; 
-            background-color: #f3f4f6; /* bg-gray-100 */
-        }
-        /* Ícones personalizados para o Leaflet */
+        body { font-family: 'Inter', sans-serif; }
+        #mapa { height: 500px; border-radius: 0.5rem; background-color: #f3f4f6; }
         .pin-vermelho { color: #dc2626; } /* red-600 */
         .pin-amarelo { color: #f59e0b; } /* amber-500 */
         .pin-verde { color: #16a34a; }  /* green-600 */
-        
-        /* Cores da Bandeira SCC */
-        .scc-bg-blue { background-color: #312e81; } /* indigo-900 */
-        .scc-bg-green { background-color: #15803d; } /* green-700 */
+        .scc-bg-blue { background-color: #312e81; }
+        .scc-bg-green { background-color: #15803d; }
         .scc-text-blue { color: #312e81; }
         .scc-text-green { color: #15803d; }
-
-        /* Animação de carregamento */
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
-        }
-        .animate-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
 
     <div class="max-w-7xl mx-auto p-4 md:p-8">
         
-        <!-- Cabeçalho -->
         <header class="scc-bg-blue p-6 rounded-lg shadow-lg mb-8">
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-3xl md:text-4xl font-bold text-white">Radar Cidadão</h1>
                     <p class="text-sm md:text-base text-indigo-200">Santa Cruz do Capibaribe</p>
                 </div>
-                <!-- Mini Bandeira -->
                 <div class="flex shadow-sm">
                     <div class="w-8 h-5 bg-white rounded-l-sm"></div>
                     <div class="w-8 h-5 scc-bg-green rounded-r-sm"></div>
@@ -63,271 +40,240 @@
             </div>
         </header>
 
-        <!-- Feedback (Carregando / Erro) -->
-        <div id="feedback-msg" class="hidden mb-6 p-4 rounded-lg text-center font-medium"></div>
+        <div id="feedback-msg" class="mb-6 p-4 rounded-lg text-center font-medium bg-blue-100 text-blue-700 animate-pulse">
+            <i class="fas fa-spinner fa-spin mr-2"></i>
+            A ligar à base de dados...
+        </div>
 
-        <!-- Métricas Principais -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Total de Ocorrências</span>
-                    <p id="total-metric" class="text-3xl font-bold scc-text-blue">...</p>
+                    <p id="total-metric" class="text-3xl font-bold scc-text-blue">0</p>
                 </div>
                 <i class="fas fa-bullhorn fa-2x text-gray-300"></i>
             </div>
             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Pendentes</span>
-                    <p id="pendente-metric" class="text-3xl font-bold text-red-600">...</p>
+                    <p id="pendente-metric" class="text-3xl font-bold text-red-600">0</p>
                 </div>
                 <i class="fas fa-clock fa-2x text-gray-300"></i>
             </div>
             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Resolvidos</span>
-                    <p id="resolvido-metric" class="text-3xl font-bold scc-text-green">...</p>
+                    <p id="resolvido-metric" class="text-3xl font-bold scc-text-green">0</p>
                 </div>
                 <i class="fas fa-check-circle fa-2x text-gray-300"></i>
             </div>
         </div>
 
-        <!-- Mapa e Gráficos -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            <!-- Coluna do Mapa (ocupa 2/3 no desktop) -->
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-2xl font-semibold mb-4 scc-text-blue">Mapa de Ocorrências</h2>
                 <div id="mapa"></div>
             </div>
-
-            <!-- Coluna dos Gráficos (ocupa 1/3 no desktop) -->
             <div class="space-y-6">
-                <!-- Gráfico de Status -->
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <h2 class="text-xl font-semibold mb-4 scc-text-blue">Status Geral</h2>
                     <canvas id="grafico-status"></canvas>
                 </div>
-                <!-- Gráfico de Tipos -->
                 <div class="bg-white p-6 rounded-lg shadow-md">
                     <h2 class="text-xl font-semibold mb-4 scc-text-blue">Tipos de Ocorrência</h2>
                     <canvas id="grafico-tipos"></canvas>
                 </div>
             </div>
         </div>
-
     </div>
 
-    <!-- Leaflet JS (para o mapa) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // --- URL DA SUA NOVA API (Apps Script) ---
-        const URL_DO_SEU_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbz_Awu8N7SylgQ2ek2zkNSb1DeMf5NOlxJyahD0lJRPpcY-vGdtDcuRziKqScB86PILlA/exec";
+    
+    <script type="module">
+        // Importa as funções necessárias
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-        // --- CORREÇÃO: Mover TODO o código para dentro do DOMContentLoaded ---
-        document.addEventListener('DOMContentLoaded', () => {
+        // --- A TUA CONFIGURAÇÃO DO FIREBASE ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyDM0CvmTJMIbQudEndIJYO55r0qz30V-Sw",
+          authDomain: "cidadao-scc.firebaseapp.com",
+          projectId: "cidadao-scc",
+          storageBucket: "cidadao-scc.firebasestorage.app",
+          messagingSenderId: "542851157019",
+          appId: "1:542851157019:web:60e9b0eb957b5a3425fcbe",
+          measurementId: "G-XYKDFXRPFX"
+        };
 
-            // --- AGORA É SEGURO DECLARAR OS ELEMENTOS ---
-            const feedbackMsg = document.getElementById('feedback-msg');
-            const totalMetric = document.getElementById('total-metric');
-            const pendenteMetric = document.getElementById('pendente-metric');
-            const resolvidoMetric = document.getElementById('resolvido-metric');
-            
-            let mapa = null;
-            let layerGrupo = null;
-            let graficoStatus = null;
-            let graficoTipos = null;
+        // --- Inicializa o Firebase e o Firestore ---
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-            // Cores
-            const corAzulSCC = '#312e81';
-            const corVerdeSCC = '#15803d';
-            const corAmarelaSCC = '#f59e0b'; // amber-500
-            const corVermelhaStatus = '#dc2626'; // red-600
-
-            // --- 1. Inicializar Mapa ---
-            function inicializarMapa() {
-                if (mapa) return; 
-                
-                // Coordenadas de Santa Cruz do Capibaribe
-                const sccCoords = [-7.954, -36.204];
-                mapa = L.map('mapa').setView(sccCoords, 14);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(mapa);
-                layerGrupo = L.layerGroup().addTo(mapa); 
-            }
-
-            // --- 2. Função de Feedback ---
-            function mostrarFeedback(tipo, mensagem) {
-                feedbackMsg.classList.remove('hidden', 'bg-blue-100', 'text-blue-700', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'animate-pulse');
-                
-                if (tipo === 'loading') {
-                    feedbackMsg.classList.add('bg-blue-100', 'text-blue-700', 'animate-pulse');
-                } else if (tipo === 'error') {
-                    feedbackMsg.classList.add('bg-red-100', 'text-red-700');
-                } else { // info
-                    feedbackMsg.classList.add('bg-green-100', 'text-green-700');
-                }
-                feedbackMsg.innerHTML = mensagem; 
-                feedbackMsg.classList.remove('hidden');
-            }
-
-            // --- 3. Carregar Dados ---
-            async function carregarDados() {
-                try {
-                    inicializarMapa();
-                } catch (e) {
-                    console.error("Falha ao inicializar o mapa:", e);
-                    mostrarFeedback('error', `Falha ao carregar o mapa. Verifique a consola.`);
-                    return;
-                }
-
-                mostrarFeedback('loading', 'A carregar dados...');
-                
-                try {
-                    const response = await fetch(URL_DO_SEU_APPS_SCRIPT, {
-                        method: 'GET',
-                        cache: 'no-cache' 
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Erro HTTP: ${response.status} ${response.statusText}`);
-                    }
-
-                    const dadosJson = await response.json();
-
-                    if (dadosJson.status === 'success') {
-                        if (dadosJson.data && dadosJson.data.length > 0) {
-                            feedbackMsg.classList.add('hidden'); 
-                            processarDados(dadosJson.data);
-                        } else {
-                            mostrarFeedback('info', 'Nenhuma ocorrência encontrada.');
-                            processarDados([]); 
-                        }
-                    } else {
-                        throw new Error(dadosJson.message || 'Erro desconhecido do script');
-                    }
-                
-                } catch (error) {
-                    console.error("Erro detalhado ao carregar dados:", error);
-                    mostrarFeedback('error', `Não foi possível carregar os dados.<br><small>Detalhe: ${error.message}</small>`);
-                    totalMetric.textContent = 'Erro';
-                    pendenteMetric.textContent = 'Erro';
-                    resolvidoMetric.textContent = 'Erro';
-                }
-            }
-
-            // --- 4. Processar e Exibir Dados ---
-            function processarDados(dados) {
-                if (layerGrupo) {
-                    layerGrupo.clearLayers();
-                }
-
-                let total = dados.length;
-                let pendentes = 0;
-                let resolvidos = 0;
-                let emAndamento = 0; 
-                let tipos = {};
-
-                const iconPendente = L.divIcon({
-                    html: '<i class="fas fa-map-pin fa-3x pin-vermelho"></i>',
-                    className: '',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 32]
-                });
-                const iconResolvido = L.divIcon({
-                    html: '<i class="fas fa-map-pin fa-3x pin-verde"></i>',
-                    className: '',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 32]
-                });
-
-                dados.forEach(item => {
-                    if (item.Status === 'Resolvido') {
-                        resolvidos++;
-                    } else if (item.Status === 'Em Andamento') {
-                        emAndamento++;
-                    } else {
-                        pendentes++; 
-                    }
-                    if (item.Tipo) {
-                        tipos[item.Tipo] = (tipos[item.Tipo] || 0) + 1;
-                    }
-
-                    try {
-                        const lat = parseFloat(item.Latitude);
-                        const lon = parseFloat(item.Longitude);
-                        if (isNaN(lat) || isNaN(lon)) return; 
-                        const icon = (item.Status === 'Resolvido') ? iconResolvido : iconPendente;
-                        const marcador = L.marker([lat, lon], { icon: icon });
-                        marcador.bindPopup(`
-                            <strong class="scc-text-blue">${item.Tipo || 'N/D'}</strong><br>
-                            <strong>Status:</strong> ${item.Status || 'N/D'}<br>
-                            <strong>Data:</strong> ${item.Timestamp ? new Date(item.Timestamp).toLocaleDateString('pt-BR') : 'N/D'}<br>
-                            <strong>Descrição:</strong> ${item.Descricao || 'N/D'}
-                        `);
-                        if (layerGrupo) {
-                            layerGrupo.addLayer(marcador);
-                        }
-                    } catch(e) {
-                        console.warn("Erro ao adicionar pino para o item:", item, e);
-                    }
-                });
-
-                // --- 5. Atualizar Métricas e Gráficos ---
-                // AGORA ISTO É SEGURO, POIS AS VARIÁVEIS FORAM DECLARADAS NO SÍTIO CERTO
-                totalMetric.textContent = total;
-                pendenteMetric.textContent = pendentes;
-                resolvidoMetric.textContent = resolvidos;
-
-                // Gráfico de Status (Doughnut)
-                const ctxStatus = document.getElementById('grafico-status').getContext('2d');
-                if (graficoStatus) graficoStatus.destroy(); 
-                graficoStatus = new Chart(ctxStatus, {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Pendente', 'Em Andamento', 'Resolvido'],
-                        datasets: [{
-                            label: 'Status',
-                            data: [pendentes, emAndamento, resolvidos],
-                            backgroundColor: [corVermelhaStatus, corAmarelaSCC, corVerdeSCC],
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: true }
-                });
-
-                // Gráfico de Tipos (Bar)
-                const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
-                if (graficoTipos) graficoTipos.destroy(); 
-                graficoTipos = new Chart(ctxTipos, {
-                    type: 'bar',
-                    data: {
-                        labels: Object.keys(tipos),
-                        datasets: [{
-                            label: 'Nº de Ocorrências',
-                            data: Object.values(tipos),
-                            backgroundColor: [ corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus ],
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
-                        indexAxis: 'y', 
-                        scales: { 
-                            y: { beginAtZero: true },
-                            x: { ticks: { 
-                                stepSize: (total > 0 && Object.keys(tipos).length > 0) ? 1 : undefined 
-                            } } 
-                        }
-                    }
-                });
-            }
-            
-            // --- 6. Carregar os dados quando a página abrir ---
-            carregarDados();
+        // --- Elementos do DOM ---
+        const feedbackMsg = document.getElementById('feedback-msg');
+        const totalMetric = document.getElementById('total-metric');
+        const pendenteMetric = document.getElementById('pendente-metric');
+        const resolvidoMetric = document.getElementById('resolvido-metric');
         
-        }); // Fim do DOMContentLoaded
+        let mapa = null;
+        let layerGrupo = null;
+        let graficoStatus = null;
+        let graficoTipos = null;
+
+        // Cores
+        const corAzulSCC = '#312e81';
+        const corVerdeSCC = '#15803d';
+        const corAmarelaSCC = '#f59e0b';
+        const corVermelhaStatus = '#dc2626';
+
+        // --- 1. Inicializar Mapa (SÓ CORRE UMA VEZ) ---
+        function inicializarMapa() {
+            if (mapa) return; 
+            const sccCoords = [-7.954, -36.204];
+            mapa = L.map('mapa').setView(sccCoords, 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(mapa);
+            layerGrupo = L.layerGroup().addTo(mapa); 
+        }
+
+        // --- 2. Função de Feedback ---
+        function mostrarFeedback(tipo, mensagem) {
+            feedbackMsg.classList.remove('hidden', 'bg-blue-100', 'text-blue-700', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'animate-pulse');
+            if (tipo === 'loading') {
+                feedbackMsg.classList.add('bg-blue-100', 'text-blue-700', 'animate-pulse');
+            } else if (tipo === 'error') {
+                feedbackMsg.classList.add('bg-red-100', 'text-red-700');
+            } else { // info
+                feedbackMsg.classList.add('bg-green-100', 'text-green-700');
+            }
+            feedbackMsg.innerHTML = mensagem; 
+            feedbackMsg.classList.remove('hidden');
+        }
+
+        // --- 3. Processar e Exibir Dados (A SER CHAMADO PELO FIREBASE) ---
+        function processarDados(dados) {
+            if (!layerGrupo) inicializarMapa(); // Garante que o mapa está pronto
+            layerGrupo.clearLayers();
+
+            let total = dados.length;
+            let pendentes = 0;
+            let resolvidos = 0;
+            let emAndamento = 0; 
+            let tipos = {};
+
+            const iconPendente = L.divIcon({
+                html: '<i class="fas fa-map-pin fa-3x pin-vermelho"></i>',
+                className: '', iconSize: [32, 32], iconAnchor: [16, 32]
+            });
+            const iconResolvido = L.divIcon({
+                html: '<i class="fas fa-map-pin fa-3x pin-verde"></i>',
+                className: '', iconSize: [32, 32], iconAnchor: [16, 32]
+            });
+
+            dados.forEach(item => {
+                if (item.status === 'Resolvido') { resolvidos++; }
+                else if (item.status === 'Em Andamento') { emAndamento++; }
+                else { pendentes++; }
+                
+                if (item.tipo) { tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; }
+
+                try {
+                    const lat = parseFloat(item.latitude);
+                    const lon = parseFloat(item.longitude);
+                    if (isNaN(lat) || isNaN(lon)) return; 
+                    
+                    const icon = (item.status === 'Resolvido') ? iconResolvido : iconPendente;
+                    const marcador = L.marker([lat, lon], { icon: icon });
+                    
+                    marcador.bindPopup(`
+                        <strong class="scc-text-blue">${item.tipo || 'N/D'}</strong><br>
+                        <strong>Status:</strong> ${item.status || 'N/D'}<br>
+                        <strong>Data:</strong> ${item.timestamp ? item.timestamp.toDate().toLocaleDateString('pt-BR') : 'N/D'}<br>
+                        <strong>Descrição:</strong> ${item.descricao || 'N/D'}
+                    `);
+                    layerGrupo.addLayer(marcador);
+                } catch(e) { console.warn("Erro ao adicionar pino:", e); }
+            });
+
+            // --- 5. Atualizar Métricas e Gráficos ---
+            totalMetric.textContent = total;
+            pendenteMetric.textContent = pendentes;
+            resolvidoMetric.textContent = resolvidos;
+
+            const ctxStatus = document.getElementById('grafico-status').getContext('2d');
+            if (graficoStatus) graficoStatus.destroy(); 
+            graficoStatus = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pendente', 'Em Andamento', 'Resolvido'],
+                    datasets: [{
+                        label: 'Status',
+                        data: [pendentes, emAndamento, resolvidos],
+                        backgroundColor: [corVermelhaStatus, corAmarelaSCC, corVerdeSCC],
+                        hoverOffset: 4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: true }
+            });
+
+            const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
+            if (graficoTipos) graficoTipos.destroy(); 
+            graficoTipos = new Chart(ctxTipos, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(tipos),
+                    datasets: [{
+                        label: 'Nº de Ocorrências',
+                        data: Object.values(tipos),
+                        backgroundColor: [ corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus ],
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: true, indexAxis: 'y',
+                    scales: { 
+                        y: { beginAtZero: true },
+                        x: { ticks: { stepSize: (total > 0) ? 1 : undefined } } 
+                    }
+                }
+            });
+        }
+        
+        // --- 4. LIGAR AO FIREBASE ---
+        try {
+            inicializarMapa(); // Inicializa o mapa logo que a página carrega
+            
+            // Define a 'query' (consulta) à coleção 'ocorrencias'
+            const q = query(collection(db, "ocorrencias"));
+            
+            // 'onSnapshot' é o "ouvinte" em tempo real
+            onSnapshot(q, (snapshot) => {
+                const dados = [];
+                snapshot.forEach((doc) => {
+                    dados.push(doc.data());
+                });
+
+                // Processa os dados recebidos
+                processarDados(dados);
+
+                // Mostra feedback de sucesso
+                if (dados.length === 0) {
+                    mostrarFeedback('info', 'Nenhuma ocorrência encontrada.');
+                } else {
+                    feedbackMsg.classList.add('hidden'); // Esconde o feedback
+                }
+
+            }, (error) => {
+                // Isto acontece se as tuas "Regras" do Firestore estiverem erradas
+                console.error("Erro ao ligar ao Firestore: ", error);
+                mostrarFeedback('error', `Não foi possível ligar à base de dados. <br><small>Verifique as regras do Firestore.</small>`);
+            });
+
+        } catch(e) {
+            console.error("Erro geral:", e);
+            mostrarFeedback('error', 'Ocorreu um erro ao carregar a aplicação.');
+        }
+
     </script>
 </body>
 </html>
-
