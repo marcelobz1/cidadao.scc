@@ -159,16 +159,12 @@
             feedbackMsg.classList.remove('hidden');
         }
 
-        // --- 2. ATUALIZADO: Atualizar os Pinos do Mapa (agora com 2 filtros) ---
-        function atualizarMapaPins() {
-            if (!layerGrupo) inicializarMapa(); 
-            layerGrupo.clearLayers();
-
-            const iconPendente = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-vermelho"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
-            const iconEmAndamento = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-amarelo"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
-            const iconResolvido = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-verde"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
-
-            // Filtra os dados com base em AMBOS os filtros
+        
+        // --- 2. Função Centralizada de Atualização ---
+        // Esta função é chamada sempre que um filtro muda
+        function aplicarFiltrosEAtualizarDashboard() {
+            
+            // 1. Aplicar AMBOS os filtros aos dados principais
             const dadosFiltrados = todosOsDados.filter(item => {
                 const status = item.status || 'Pendente'; 
                 const tipo = item.tipo || null;
@@ -181,8 +177,29 @@
                 return filtrosStatus[status] && filtrosTipo[tipo]; 
             });
 
-            // Adiciona apenas os pinos filtrados ao mapa
-            dadosFiltrados.forEach(item => {
+            // 2. Atualizar o Mapa
+            atualizarMapaPins(dadosFiltrados);
+
+            // 3. Atualizar as Métricas
+            atualizarMetricas(dadosFiltrados);
+            
+            // 4. Atualizar os Gráficos
+            // O gráfico de Status NÃO é atualizado (como pediste)
+            // Mas o gráfico de Tipos PRECISA ser atualizado para refletir o filtro de Status
+            atualizarGraficoTipos(dadosFiltrados);
+        }
+
+        // --- 3. Funções de Atualização Específicas ---
+
+        function atualizarMapaPins(dados) {
+            if (!layerGrupo) inicializarMapa(); 
+            layerGrupo.clearLayers();
+
+            const iconPendente = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-vermelho"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
+            const iconEmAndamento = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-amarelo"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
+            const iconResolvido = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-verde"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
+
+            dados.forEach(item => {
                 try {
                     const lat = parseFloat(item.latitude);
                     const lon = parseFloat(item.longitude);
@@ -203,50 +220,38 @@
                     layerGrupo.addLayer(marcador);
                 } catch(e) { console.warn("Erro ao adicionar pino:", e); }
             });
-            
-            // ATUALIZADO: Atualiza também as métricas e gráficos com os dados filtrados
-            processarMetricasEGraficos(dadosFiltrados, true); // Passa 'true' para não re-filtrar os tipos
         }
 
-
-        // --- 3. ATUALIZADO: Processar Dados (Métricas e Gráficos) ---
-        // 'dados' aqui podem ser todos os dados, ou os dados já filtrados
-        // 'apenasAtualizar' evita que os filtros de tipo sejam resetados
-        function processarMetricasEGraficos(dados, apenasAtualizar = false) {
+        function atualizarMetricas(dados) {
             let total = dados.length;
             let pendentes = 0;
             let resolvidos = 0;
             let emAndamento = 0; 
-            let tipos = {};
             
-            // Se estamos a atualizar TUDO (v_F_ = false),
-            // temos de recalcular os tipos E resetar os filtros de tipo
-            if (!apenasAtualizar) { 
-                filtrosTipo = {}; 
-                coresTipos = {};
-                todosOsDados.forEach(item => {
-                    if (item.tipo) {
-                        filtrosTipo[item.tipo] = true; // Default = todos visíveis
-                    }
-                });
-            }
-
-            // Agora contamos com base nos dados (possivelmente filtrados)
             dados.forEach(item => {
                 if (item.status === 'Resolvido') { resolvidos++; }
                 else if (item.status === 'Em Andamento') { emAndamento++; }
                 else { pendentes++; }
-                
-                if (item.tipo) { tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; }
             });
 
-            // --- Atualizar Métricas (Sempre com o TOTAL dos dados filtrados) ---
-            // A métrica "Total" agora reflete a seleção
             totalMetric.textContent = total;
             pendenteMetric.textContent = pendentes;
             resolvidoMetric.textContent = resolvidos;
+        }
 
-            // --- Gráfico de Status (COM FILTRO) ---
+        // --- 4. Funções de Criação dos Gráficos (Chamadas só uma vez) ---
+
+        function criarGraficoStatus(dados) {
+            let pendentes = 0;
+            let resolvidos = 0;
+            let emAndamento = 0; 
+            
+            dados.forEach(item => {
+                if (item.status === 'Resolvido') { resolvidos++; }
+                else if (item.status === 'Em Andamento') { emAndamento++; }
+                else { pendentes++; }
+            });
+
             const ctxStatus = document.getElementById('grafico-status').getContext('2d');
             if (graficoStatus) graficoStatus.destroy(); 
             graficoStatus = new Chart(ctxStatus, {
@@ -263,42 +268,47 @@
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: true,
-                    // REMOVIDO o options.onClick
+                    // CORRIGIDO: Lógica de clique APENAS na legenda
                     plugins: {
                         legend: {
-                            // CORRIGIDO: Lógica de clique na LEGENDA
                             onClick: (e, legendItem, legend) => {
-                                // 1. Logica padrão do Chart.js para mostrar/esconder
+                                // 1. Executa a ação padrão (adiciona o traço)
                                 Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
                                 
                                 // 2. Atualiza o nosso objeto de filtro
-                                // A 'hidden' property agora está ATUALIZADA
                                 filtrosStatus[legendItem.text] = !legendItem.hidden;
                                 
-                                // 3. Manda atualizar APENAS o mapa
-                                atualizarMapaPins();
+                                // 3. Manda atualizar o resto do dashboard
+                                aplicarFiltrosEAtualizarDashboard();
                             }
                         }
                     }
                 }
             });
+        }
 
-            // --- Gráfico de Tipos (AGORA TAMBÉM FILTRÁVEL) ---
-            const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
-            
-            const labelsTipos = Object.keys(tipos);
+        function criarGraficoTipos(dados) {
+            let tipos = {};
             const coresBase = [corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus, '#6366f1', '#ec4899'];
             
-            if (!apenasAtualizar) { // Só guarda as cores na primeira vez
-                 labelsTipos.forEach((label, index) => {
-                    coresTipos[label] = coresBase[index % coresBase.length];
-                });
-            }
-           
+            dados.forEach((item, index) => {
+                if (item.tipo) { 
+                    tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; 
+                    if (!coresTipos[item.tipo]) { // Guarda a cor original
+                        coresTipos[item.tipo] = coresBase[Object.keys(coresTipos).length % coresBase.length];
+                    }
+                    if (filtrosTipo[item.tipo] === undefined) { // Popula o filtro
+                        filtrosTipo[item.tipo] = true;
+                    }
+                }
+            });
+
+            const labelsTipos = Object.keys(tipos);
             const backgroundColors = labelsTipos.map(label => {
                 return filtrosTipo[label] ? coresTipos[label] : corCinzaFiltro;
             });
 
+            const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
             if (graficoTipos) graficoTipos.destroy(); 
             graficoTipos = new Chart(ctxTipos, {
                 type: 'bar',
@@ -307,24 +317,18 @@
                     datasets: [{
                         label: 'Nº de Ocorrências',
                         data: Object.values(tipos),
-                        backgroundColor: backgroundColors, // Usa as cores com filtro
+                        backgroundColor: backgroundColors,
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: true, indexAxis: 'y',
                     scales: { 
                         y: { beginAtZero: true },
-                        x: { ticks: { stepSize: (total > 0 && total < 10) ? 1 : undefined } } 
+                        x: { ticks: { stepSize: (dados.length > 0 && dados.length < 10) ? 1 : undefined } } 
                     },
                     plugins: {
-                        legend: { display: false },
-                        // NOVO: Clique nas BARRAS para filtrar
-                        tooltip: {
-                            // Desativa o clique no tooltip para não atrapalhar
-                            enabled: false 
-                        }
+                        legend: { display: false }
                     },
-                    // NOVO: Lógica de clique no gráfico de barras
                     onClick: (e, elements, chart) => {
                         if (elements.length > 0) {
                             const index = elements[0].index;
@@ -333,10 +337,10 @@
                             // 1. Inverte o filtro
                             filtrosTipo[label] = !filtrosTipo[label];
                             
-                            // 2. Manda atualizar o MAPA e as MÉTRICAS
-                            atualizarMapaPins();
+                            // 2. Manda atualizar o resto do dashboard
+                            aplicarFiltrosEAtualizarDashboard();
                             
-                            // 3. Atualiza as cores deste gráfico
+                            // 3. Atualiza as cores DESTE gráfico
                             chart.data.datasets[0].backgroundColor = chart.data.labels.map(l => {
                                 return filtrosTipo[l] ? coresTipos[l] : corCinzaFiltro;
                             });
@@ -347,7 +351,27 @@
             });
         }
         
-        // --- 4. Inicializar Mapa (SÓ CORRE UMA VEZ) ---
+        // NOVO: Função para atualizar o gráfico de tipos (baseado nos filtros de status)
+        function atualizarGraficoTipos(dadosFiltrados) {
+            if (!graficoTipos) return; // Se o gráfico não foi criado ainda
+            
+            let tipos = {};
+            dadosFiltrados.forEach(item => {
+                if (item.tipo) { 
+                    tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; 
+                }
+            });
+            
+            // Atualiza os dados do gráfico de tipos
+            graficoTipos.data.labels = Object.keys(tipos);
+            graficoTipos.data.datasets[0].data = Object.values(tipos);
+            graficoTipos.data.datasets[0].backgroundColor = graficoTipos.data.labels.map(l => {
+                return filtrosTipo[l] ? coresTipos[l] : corCinzaFiltro;
+            });
+            graficoTipos.update();
+        }
+
+        // --- 5. Inicializar Mapa (SÓ CORRE UMA VEZ) ---
         function inicializarMapa() {
             if (mapa) return; 
             const sccCoords = [-7.954, -36.204]; // Coordenadas de Santa Cruz do Capibaribe
@@ -358,7 +382,7 @@
             layerGrupo = L.layerGroup().addTo(mapa); 
         }
 
-        // --- 5. LIGAR AO FIREBASE QUANDO A PÁGINA CARREGAR ---
+        // --- 6. LIGAR AO FIREBASE QUANDO A PÁGINA CARREGAR ---
         window.onload = () => {
             // Agora temos a certeza que os elementos existem
             feedbackMsg = document.getElementById('feedback-msg');
@@ -369,7 +393,6 @@
             try {
                 inicializarMapa(); // Inicializa o mapa
                 
-                // Define a 'query' (consulta) à coleção 'ocorrencias'
                 const q = query(collection(db, "ocorrencias"));
                 
                 // 'onSnapshot' é o "ouvinte" em tempo real
@@ -380,11 +403,12 @@
                         todosOsDados.push(doc.data()); 
                     });
 
-                    // 2. Processa as métricas e gráficos (COM TODOS OS DADOS)
-                    processarMetricasEGraficos(todosOsDados, false); // 'false' = é um refresh total
-                    
-                    // 3. Atualiza os pinos do mapa (que vai usar os filtros)
-                    atualizarMapaPins(); 
+                    // 2. Cria os gráficos pela primeira vez com os dados TOTAIS
+                    criarGraficoStatus(todosOsDados);
+                    criarGraficoTipos(todosOsDados);
+
+                    // 3. Aplica os filtros (default) e atualiza o resto
+                    aplicarFiltrosEAtualizarDashboard(); 
 
                     // Mostra feedback de sucesso
                     if (todosOsDados.length === 0) {
@@ -394,7 +418,6 @@
                     }
 
                 }, (error) => {
-                    // Isto acontece se as tuas "Regras" do Firestore estiverem erradas
                     console.error("Erro ao ligar ao Firestore: ", error);
                     mostrarFeedback('error', `Não foi possível ligar à base de dados. <br><small>Verifique as regras do Firestore.</small>`);
                 });
@@ -407,4 +430,5 @@
     </script>
 </body>
 </html>
+
 
