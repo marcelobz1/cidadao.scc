@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registar Ocorrência - SCC</title>
+    <!-- Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome (Ícones) - VERSÃO ATUALIZADA -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- Fonte Inter --><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+        }
+        /* Cores personalizadas da bandeira */
+        .scc-blue { color: #312e81; } /* indigo-900 */
+        .scc-green { color: #15803d; } /* green-700 */
+        .scc-bg-blue { background-color: #312e81; }
+        .scc-bg-green { background-color: #15803d; }
+        .scc-border-green { border-color: #15803d; }
+
+        /* Estilo para o botão de loading */
+        .spinner {
+            border-top-color: transparent;
+            border-right-color: transparent;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <div class="max-w-md mx-auto">
+        <!-- CABEÇALHO ATUALIZADO --><header class="scc-bg-blue p-6 rounded-b-lg shadow-lg">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-white">Radar Cidadão</h1>
+                    <p class="text-sm text-indigo-200">Registar Ocorrência</p>
+                </div>
+                <!-- Mini-bandeira --><div class="flex shadow-sm">
+                    <div class="w-8 h-5 bg-white rounded-l-sm"></div>
+                    <div class="w-8 h-5 scc-bg-green rounded-r-sm"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Formulário --><main class="p-6">
+            <form id="ocorrencia-form" class="bg-white p-6 rounded-lg shadow-md space-y-6">
+                
+                <!-- 1. Tipo de Ocorrência --><div>
+                    <label for="tipo" class="block text-sm font-medium text-gray-700 mb-2">Qual o problema?</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" class="tipo-btn flex flex-col items-center p-4 border border-gray-300 rounded-lg shadow-sm hover:scc-border-green focus:outline-none focus:ring-2 focus:ring-offset-2 focus:scc-border-green" data-valor="Buraco na via">
+                            <!-- ÍCONE CORRIGIDO/INSERIDO AQUI -->
+                            <i class="fas fa-road-circle-exclamation fa-2x scc-blue mb-2"></i>
+                            <span class="text-sm font-medium">Buraco na Via</span>
+                        </button>
+                        <button type="button" class="tipo-btn flex flex-col items-center p-4 border border-gray-300 rounded-lg shadow-sm hover:scc-border-green focus:outline-none focus:ring-2 focus:ring-offset-2 focus:scc-border-green" data-valor="Lixo acumulado">
+                            <i class="fas fa-trash-alt fa-2x scc-blue mb-2"></i>
+                            <span class="text-sm font-medium">Lixo Acumulado</span>
+                        </button>
+                        <button type="button" class="tipo-btn flex flex-col items-center p-4 border border-gray-300 rounded-lg shadow-sm hover:scc-border-green focus:outline-none focus:ring-2 focus:ring-offset-2 focus:scc-border-green" data-valor="Lâmpada queimada">
+                            <i class="fas fa-lightbulb fa-2x scc-blue mb-2"></i>
+                            <span class="text-sm font-medium">Lâmpada Queimada</span>
+                        </button>
+                        <button type="button" class="tipo-btn flex flex-col items-center p-4 border border-gray-300 rounded-lg shadow-sm hover:scc-border-green focus:outline-none focus:ring-2 focus:ring-offset-2 focus:scc-border-green" data-valor="Fuga de água">
+                            <i class="fas fa-tint fa-2x scc-blue mb-2"></i>
+                            <span class="text-sm font-medium">Fuga de Água</span>
+                        </button>
+                    </div>
+                    <!-- Input escondido que guarda o valor --><input type="hidden" id="tipo" name="tipo" required>
+                </div>
+
+                <!-- 2. Descrição --><div>
+                    <label for="descricao" class="block text-sm font-medium text-gray-700">Descrição (Opcional)</label>
+                    <textarea id="descricao" name="descricao" rows="3" class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-3 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ex: Perto da padaria, buraco muito fundo..."></textarea>
+                </div>
+
+                <!-- 3. Localização (Campos escondidos) --><input type="hidden" id="latitude" name="latitude" required>
+                <input type="hidden" id="longitude" name="longitude" required>
+
+                <!-- Mensagem de Status (Geolocalização) --><div id="status-geoloc" class="text-sm text-center p-3 rounded-lg bg-gray-50 text-gray-600">
+                    <i class="fas fa-spinner fa-spin mr-2"></i> A obter localização...
+                </div>
+                
+                <!-- Botão de Envio ATUALIZADO --><button type="submit" id="submit-btn" class="w-full scc-bg-green text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center" disabled>
+                    <span id="btn-text">Enviar Ocorrência</span>
+                    <div id="btn-spinner" class="spinner w-5 h-5 border-2 border-white rounded-full ml-3 hidden"></div>
+                </button>
+            </form>
+
+            <!-- Mensagem de Feedback (Sucesso/Erro) --><div id="feedback-msg" class="hidden mt-6 p-4 rounded-lg text-center font-medium"></div>
+        </main>
+    </div>
+
+    <script>
+        // --- URL DA API (Apps Script) ---
+        // ESTA URL JÁ ESTÁ CORRETA
+        const URL_DO_SEU_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbwXOVccvx8EBVPd0pHu-wxPKL4Uri_1OtAd2aJMO83AfachaAPZSk_jXTo77ABGwzTh/exec";
+        
+        // Elementos do DOM
+        const form = document.getElementById('ocorrencia-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const btnText = document.getElementById('btn-text');
+        const btnSpinner = document.getElementById('btn-spinner');
+        const feedbackMsg = document.getElementById('feedback-msg');
+        const tipoInput = document.getElementById('tipo');
+        const tipoBtns = document.querySelectorAll('.tipo-btn');
+        const statusGeoloc = document.getElementById('status-geoloc');
+        const latitudeInput = document.getElementById('latitude');
+        const longitudeInput = document.getElementById('longitude');
+
+        // --- 1. Lógica dos Botões de Tipo ---
+        let tipoSelecionado = false;
+        tipoBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Remove seleção de todos
+                tipoBtns.forEach(b => {
+                    b.classList.remove('scc-border-green', 'ring-2', 'ring-offset-2');
+                    b.classList.add('border-gray-300');
+                });
+                // Adiciona seleção ao clicado
+                btn.classList.add('scc-border-green', 'ring-2', 'ring-offset-2');
+                btn.classList.remove('border-gray-300');
+                
+                tipoInput.value = btn.dataset.valor;
+                tipoSelecionado = true;
+                verificarProntidao();
+            });
+        });
+
+        // --- 2. Obter Geolocalização ---
+        let geolocPronta = false;
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (posicao) => {
+                    latitudeInput.value = posicao.coords.latitude;
+                    longitudeInput.value = posicao.coords.longitude;
+                    statusGeoloc.innerHTML = `<i class="fas fa-check-circle text-green-600 mr-2"></i> Localização obtida com sucesso!`;
+                    statusGeoloc.classList.add('bg-green-50', 'text-green-700');
+                    geolocPronta = true;
+                    verificarProntidao();
+                },
+                (erro) => {
+                    console.error("Erro de Geolocalização: ", erro);
+                    let msg = "Erro ao obter localização.";
+                    if (erro.code === erro.PERMISSION_DENIED) {
+                        msg = "Geolocalização foi negada. Por favor, ative nas permissões do seu navegador.";
+                    } else if (erro.message.includes('policy')) {
+                         msg = "Geolocalização bloqueada. Ative nas permissões.";
+                    }
+                    statusGeoloc.innerHTML = `<i class="fas fa-times-circle text-red-600 mr-2"></i> ${msg}`;
+                    statusGeoloc.classList.add('bg-red-50', 'text-red-700');
+                    geolocPronta = false;
+                    verificarProntidao();
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        } else {
+            statusGeoloc.innerHTML = `<i class="fas fa-times-circle text-red-600 mr-2"></i> Geolocalização não é suportada neste navegador.`;
+            statusGeoloc.classList.add('bg-red-50', 'text-red-700');
+            geolocPronta = false;
+        }
+
+        // --- 3. Verificar Prontidão do Formulário ---
+        function verificarProntidao() {
+            if (tipoSelecionado && geolocPronta) {
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.disabled = true;
+            }
+        }
+
+        // --- 4. Envio do Formulário ---
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Ativar estado de 'loading'
+            submitBtn.disabled = true;
+            btnText.textContent = 'A enviar...';
+            btnSpinner.classList.remove('hidden');
+            feedbackMsg.classList.add('hidden');
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(URL_DO_SEU_APPS_SCRIPT, {
+                    method: 'POST',
+                    body: formData,
+                    // Não definimos 'Content-Type' aqui, o 'fetch' faz isso automaticamente
+                    // com o FormData, incluindo o 'boundary' correto.
+                    // 'mode: no-cors' NÃO é necessário se o Apps Script estiver
+                    // implementado para 'Qualquer pessoa' e retornar JSON (o que fizemos).
+                });
+                
+                // O Apps Script agora retorna JSON
+                const resultado = await response.json();
+
+                if (resultado.status === 'success') {
+                    // Mostrar mensagem de sucesso
+                    mostrarFeedback('success', 'Ocorrência registada com sucesso!');
+                    form.reset(); // Limpa o formulário
+                    // Reseta os botões de tipo
+                    tipoBtns.forEach(b => {
+                        b.classList.remove('scc-border-green', 'ring-2', 'ring-offset-2');
+                        b.classList.add('border-gray-300');
+                    });
+                    tipoSelecionado = false;
+                    // Não reativamos o botão de envio até que a geoloc e tipo estejam prontos de novo
+                    // A geoloc já foi obtida, então só falta o tipo.
+                    verificarProntidao(); 
+
+                } else {
+                    // Mostrar mensagem de erro vinda do script
+                    console.error("Erro do Apps Script:", resultado.message);
+                    mostrarFeedback('error', `Erro do servidor: ${resultado.message}`);
+                }
+
+            } catch (error) {
+                // Mostrar mensagem de erro de rede
+                console.error("Erro de rede:", error);
+                mostrarFeedback('error', 'Erro de ligação. Tente novamente.');
+            
+            } finally {
+                // Desativar estado de 'loading' (exceto se foi sucesso)
+                if (feedbackMsg.classList.contains('bg-red-100')) {
+                    submitBtn.disabled = false; // Só reativa se deu erro
+                }
+                btnText.textContent = 'Enviar Ocorrência';
+                btnSpinner.classList.add('hidden');
+            }
+        });
+
+        // --- 5. Mostrar Feedback (Sucesso/Erro) ---
+        function mostrarFeedback(tipo, mensagem) {
+            feedbackMsg.classList.remove('hidden', 'bg-green-100', 'text-green-700', 'bg-red-100', 'text-red-700');
+            if (tipo === 'success') {
+                feedbackMsg.classList.add('bg-green-100', 'text-green-700');
+            } else {
+                feedbackMsg.classList.add('bg-red-100', 'text-red-700');
+            }
+            feedbackMsg.textContent = mensagem;
+
+            // Esconder a mensagem após 5 segundos
+            setTimeout(() => {
+                feedbackMsg.classList.add('hidden');
+            }, 5000);
+        }
+
+    </script>
+</body>
+</html>
+
