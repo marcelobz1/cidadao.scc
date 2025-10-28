@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registar Ocorrência - SCC</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <!-- Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome (Ícones) --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- Fonte Inter --><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .scc-blue { color: #312e81; }
@@ -78,6 +78,7 @@
         </main>
     </div>
 
+    <!-- SDKs do Firebase (Módulos v9) -->
     <script type="module">
         // Importa as funções necessárias
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -116,8 +117,13 @@
         let tipoSelecionado = false;
         tipoBtns.forEach(btn => {
             btn.addEventListener('click', () => {
-                tipoBtns.forEach(b => b.classList.remove('scc-border-green', 'ring-2', 'ring-offset-2', 'border-gray-300'));
+                tipoBtns.forEach(b => {
+                    b.classList.remove('scc-border-green', 'ring-2', 'ring-offset-2');
+                    b.classList.add('border-gray-300');
+                });
                 btn.classList.add('scc-border-green', 'ring-2', 'ring-offset-2');
+                btn.classList.remove('border-gray-300');
+                
                 tipoInput.value = btn.dataset.valor;
                 tipoSelecionado = true;
                 verificarProntidao();
@@ -189,7 +195,10 @@
                 console.log("Documento escrito com ID: ", docRef.id);
                 mostrarFeedback('success', 'Ocorrência registada com sucesso!');
                 form.reset(); 
-                tipoBtns.forEach(b => b.classList.remove('scc-border-green', 'ring-2', 'ring-offset-2'));
+                tipoBtns.forEach(b => {
+                    b.classList.remove('scc-border-green', 'ring-2', 'ring-offset-2');
+                    b.classList.add('border-gray-300');
+                });
                 tipoSelecionado = false;
                 verificarProntidao(); 
 
