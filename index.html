@@ -4,10 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Radar Cidadão - Santa Cruz do Capibaribe</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS (para o mapa) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Chart.js (para os gráficos) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome (Ícones) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- Fonte Inter -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -27,6 +32,7 @@
 
     <div class="max-w-7xl mx-auto p-4 md:p-8">
         
+        <!-- Cabeçalho -->
         <header class="scc-bg-blue p-6 rounded-lg shadow-lg mb-8">
             <div class="flex items-center justify-between">
                 <div>
@@ -40,35 +46,38 @@
             </div>
         </header>
 
+        <!-- Feedback (Carregando / Erro) -->
         <div id="feedback-msg" class="mb-6 p-4 rounded-lg text-center font-medium bg-blue-100 text-blue-700 animate-pulse">
             <i class="fas fa-spinner fa-spin mr-2"></i>
             A ligar à base de dados...
         </div>
 
+        <!-- Métricas Principais -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Total de Ocorrências</span>
-                    <p id="total-metric" class="text-3xl font-bold scc-text-blue">0</p>
+                    <p id="total-metric" class="text-3xl font-bold scc-text-blue">...</p>
                 </div>
                 <i class="fas fa-bullhorn fa-2x text-gray-300"></i>
             </div>
             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Pendentes</span>
-                    <p id="pendente-metric" class="text-3xl font-bold text-red-600">0</p>
+                    <p id="pendente-metric" class="text-3xl font-bold text-red-600">...</p>
                 </div>
                 <i class="fas fa-clock fa-2x text-gray-300"></i>
             </div>
             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Resolvidos</span>
-                    <p id="resolvido-metric" class="text-3xl font-bold scc-text-green">0</p>
+                    <p id="resolvido-metric" class="text-3xl font-bold scc-text-green">...</p>
                 </div>
                 <i class="fas fa-check-circle fa-2x text-gray-300"></i>
             </div>
         </div>
 
+        <!-- Mapa e Gráficos -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-2xl font-semibold mb-4 scc-text-blue">Mapa de Ocorrências</h2>
@@ -87,8 +96,10 @@
         </div>
     </div>
 
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
+    <!-- SDKs do Firebase (Módulos v9) -->
     <script type="module">
         // Importa as funções necessárias
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -109,12 +120,8 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- Elementos do DOM ---
-        const feedbackMsg = document.getElementById('feedback-msg');
-        const totalMetric = document.getElementById('total-metric');
-        const pendenteMetric = document.getElementById('pendente-metric');
-        const resolvidoMetric = document.getElementById('resolvido-metric');
-        
+        // --- Elementos do DOM (movidos para dentro do 'onload') ---
+        let feedbackMsg, totalMetric, pendenteMetric, resolvidoMetric;
         let mapa = null;
         let layerGrupo = null;
         let graficoStatus = null;
@@ -126,32 +133,22 @@
         const corAmarelaSCC = '#f59e0b';
         const corVermelhaStatus = '#dc2626';
 
-        // --- 1. Inicializar Mapa (SÓ CORRE UMA VEZ) ---
-        function inicializarMapa() {
-            if (mapa) return; 
-            const sccCoords = [-7.954, -36.204];
-            mapa = L.map('mapa').setView(sccCoords, 14);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(mapa);
-            layerGrupo = L.layerGroup().addTo(mapa); 
-        }
-
-        // --- 2. Função de Feedback ---
+        // --- 1. Função de Feedback ---
         function mostrarFeedback(tipo, mensagem) {
+            if (!feedbackMsg) feedbackMsg = document.getElementById('feedback-msg');
             feedbackMsg.classList.remove('hidden', 'bg-blue-100', 'text-blue-700', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'animate-pulse');
             if (tipo === 'loading') {
                 feedbackMsg.classList.add('bg-blue-100', 'text-blue-700', 'animate-pulse');
             } else if (tipo === 'error') {
                 feedbackMsg.classList.add('bg-red-100', 'text-red-700');
-            } else { // info
+            } else { // info ou success
                 feedbackMsg.classList.add('bg-green-100', 'text-green-700');
             }
             feedbackMsg.innerHTML = mensagem; 
             feedbackMsg.classList.remove('hidden');
         }
 
-        // --- 3. Processar e Exibir Dados (A SER CHAMADO PELO FIREBASE) ---
+        // --- 2. Processar e Exibir Dados (A SER CHAMADO PELO FIREBASE) ---
         function processarDados(dados) {
             if (!layerGrupo) inicializarMapa(); // Garante que o mapa está pronto
             layerGrupo.clearLayers();
@@ -172,12 +169,15 @@
             });
 
             dados.forEach(item => {
+                // Contagem de Status
                 if (item.status === 'Resolvido') { resolvidos++; }
                 else if (item.status === 'Em Andamento') { emAndamento++; }
                 else { pendentes++; }
                 
+                // Contagem de Tipos
                 if (item.tipo) { tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; }
 
+                // Adicionar Pinos ao Mapa
                 try {
                     const lat = parseFloat(item.latitude);
                     const lon = parseFloat(item.longitude);
@@ -196,11 +196,12 @@
                 } catch(e) { console.warn("Erro ao adicionar pino:", e); }
             });
 
-            // --- 5. Atualizar Métricas e Gráficos ---
+            // --- 3. Atualizar Métricas e Gráficos ---
             totalMetric.textContent = total;
             pendenteMetric.textContent = pendentes;
             resolvidoMetric.textContent = resolvidos;
 
+            // Gráfico de Status
             const ctxStatus = document.getElementById('grafico-status').getContext('2d');
             if (graficoStatus) graficoStatus.destroy(); 
             graficoStatus = new Chart(ctxStatus, {
@@ -217,6 +218,7 @@
                 options: { responsive: true, maintainAspectRatio: true }
             });
 
+            // Gráfico de Tipos
             const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
             if (graficoTipos) graficoTipos.destroy(); 
             graficoTipos = new Chart(ctxTipos, {
@@ -239,41 +241,60 @@
             });
         }
         
-        // --- 4. LIGAR AO FIREBASE ---
-        try {
-            inicializarMapa(); // Inicializa o mapa logo que a página carrega
-            
-            // Define a 'query' (consulta) à coleção 'ocorrencias'
-            const q = query(collection(db, "ocorrencias"));
-            
-            // 'onSnapshot' é o "ouvinte" em tempo real
-            onSnapshot(q, (snapshot) => {
-                const dados = [];
-                snapshot.forEach((doc) => {
-                    dados.push(doc.data());
-                });
-
-                // Processa os dados recebidos
-                processarDados(dados);
-
-                // Mostra feedback de sucesso
-                if (dados.length === 0) {
-                    mostrarFeedback('info', 'Nenhuma ocorrência encontrada.');
-                } else {
-                    feedbackMsg.classList.add('hidden'); // Esconde o feedback
-                }
-
-            }, (error) => {
-                // Isto acontece se as tuas "Regras" do Firestore estiverem erradas
-                console.error("Erro ao ligar ao Firestore: ", error);
-                mostrarFeedback('error', `Não foi possível ligar à base de dados. <br><small>Verifique as regras do Firestore.</small>`);
-            });
-
-        } catch(e) {
-            console.error("Erro geral:", e);
-            mostrarFeedback('error', 'Ocorreu um erro ao carregar a aplicação.');
+        // --- 4. Inicializar Mapa (SÓ CORRE UMA VEZ) ---
+        function inicializarMapa() {
+            if (mapa) return; 
+            const sccCoords = [-7.954, -36.204]; // Coordenadas de Santa Cruz do Capibaribe
+            mapa = L.map('mapa').setView(sccCoords, 14);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(mapa);
+            layerGrupo = L.layerGroup().addTo(mapa); 
         }
 
+        // --- 5. LIGAR AO FIREBASE QUANDO A PÁGINA CARREGAR ---
+        window.onload = () => {
+            // Agora temos a certeza que os elementos existem
+            feedbackMsg = document.getElementById('feedback-msg');
+            totalMetric = document.getElementById('total-metric');
+            pendenteMetric = document.getElementById('pendente-metric');
+            resolvidoMetric = document.getElementById('resolvido-metric');
+            
+            try {
+                inicializarMapa(); // Inicializa o mapa
+                
+                // Define a 'query' (consulta) à coleção 'ocorrencias'
+                const q = query(collection(db, "ocorrencias"));
+                
+                // 'onSnapshot' é o "ouvinte" em tempo real
+                onSnapshot(q, (snapshot) => {
+                    const dados = [];
+                    snapshot.forEach((doc) => {
+                        // Importante: guardamos o .data() que é o objeto
+                        dados.push(doc.data()); 
+                    });
+
+                    // Processa os dados recebidos
+                    processarDados(dados);
+
+                    // Mostra feedback de sucesso
+                    if (dados.length === 0) {
+                        mostrarFeedback('info', 'Nenhuma ocorrência encontrada.');
+                    } else {
+                        feedbackMsg.classList.add('hidden'); // Esconde o feedback
+                    }
+
+                }, (error) => {
+                    // Isto acontece se as tuas "Regras" do Firestore estiverem erradas
+                    console.error("Erro ao ligar ao Firestore: ", error);
+                    mostrarFeedback('error', `Não foi possível ligar à base de dados. <br><small>Verifique as regras do Firestore.</small>`);
+                });
+
+            } catch(e) {
+                console.error("Erro geral:", e);
+                mostrarFeedback('error', 'Ocorreu um erro ao carregar a aplicação.');
+            }
+        }; // Fim do window.onload
     </script>
 </body>
 </html>
