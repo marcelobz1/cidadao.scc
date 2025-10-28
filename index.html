@@ -127,6 +127,14 @@
         let graficoStatus = null;
         let graficoTipos = null;
 
+        // --- NOVO: Variáveis Globais para dados e filtros ---
+        let todosOsDados = []; // Onde guardamos TODOS os dados vindos do Firebase
+        let filtrosStatus = { // O estado atual dos nossos filtros
+            'Pendente': true,
+            'Em Andamento': true,
+            'Resolvido': true
+        };
+
         // Cores
         const corAzulSCC = '#312e81';
         const corVerdeSCC = '#15803d';
@@ -148,42 +156,33 @@
             feedbackMsg.classList.remove('hidden');
         }
 
-        // --- 2. Processar e Exibir Dados (A SER CHAMADO PELO FIREBASE) ---
-        function processarDados(dados) {
+        // --- 2. NOVO: Função para atualizar APENAS os Pinos do Mapa ---
+        // Esta função lê os dados globais e aplica os filtros
+        function atualizarMapaPins() {
             if (!layerGrupo) inicializarMapa(); // Garante que o mapa está pronto
             layerGrupo.clearLayers();
 
-            let total = dados.length;
-            let pendentes = 0;
-            let resolvidos = 0;
-            let emAndamento = 0; 
-            let tipos = {};
+            const iconPendente = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-vermelho"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
+            const iconEmAndamento = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-amarelo"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
+            const iconResolvido = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-verde"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
 
-            const iconPendente = L.divIcon({
-                html: '<i class="fas fa-map-pin fa-3x pin-vermelho"></i>',
-                className: '', iconSize: [32, 32], iconAnchor: [16, 32]
-            });
-            const iconResolvido = L.divIcon({
-                html: '<i class="fas fa-map-pin fa-3x pin-verde"></i>',
-                className: '', iconSize: [32, 32], iconAnchor: [16, 32]
+            // Filtra os dados com base nos filtros de status
+            const dadosFiltrados = todosOsDados.filter(item => {
+                const status = item.status || 'Pendente'; // Assume 'Pendente' se não houver
+                return filtrosStatus[status]; // Retorna true se o status estiver visível
             });
 
-            dados.forEach(item => {
-                // Contagem de Status
-                if (item.status === 'Resolvido') { resolvidos++; }
-                else if (item.status === 'Em Andamento') { emAndamento++; }
-                else { pendentes++; }
-                
-                // Contagem de Tipos
-                if (item.tipo) { tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; }
-
-                // Adicionar Pinos ao Mapa
+            // Adiciona apenas os pinos filtrados ao mapa
+            dadosFiltrados.forEach(item => {
                 try {
                     const lat = parseFloat(item.latitude);
                     const lon = parseFloat(item.longitude);
                     if (isNaN(lat) || isNaN(lon)) return; 
+
+                    let icon = iconPendente;
+                    if (item.status === 'Resolvido') icon = iconResolvido;
+                    else if (item.status === 'Em Andamento') icon = iconEmAndamento;
                     
-                    const icon = (item.status === 'Resolvido') ? iconResolvido : iconPendente;
                     const marcador = L.marker([lat, lon], { icon: icon });
                     
                     marcador.bindPopup(`
@@ -195,13 +194,34 @@
                     layerGrupo.addLayer(marcador);
                 } catch(e) { console.warn("Erro ao adicionar pino:", e); }
             });
+        }
 
-            // --- 3. Atualizar Métricas e Gráficos ---
+
+        // --- 3. Processar Dados (Métricas e Gráficos) ---
+        // Esta função agora processa TODOS os dados, mas NÃO mexe no mapa
+        function processarMetricasEGraficos(dados) {
+            let total = dados.length;
+            let pendentes = 0;
+            let resolvidos = 0;
+            let emAndamento = 0; 
+            let tipos = {};
+
+            dados.forEach(item => {
+                // Contagem de Status
+                if (item.status === 'Resolvido') { resolvidos++; }
+                else if (item.status === 'Em Andamento') { emAndamento++; }
+                else { pendentes++; }
+                
+                // Contagem de Tipos
+                if (item.tipo) { tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; }
+            });
+
+            // --- Atualizar Métricas (Sempre com o TOTAL) ---
             totalMetric.textContent = total;
             pendenteMetric.textContent = pendentes;
             resolvidoMetric.textContent = resolvidos;
 
-            // Gráfico de Status
+            // --- Gráfico de Status (Sempre com o TOTAL) ---
             const ctxStatus = document.getElementById('grafico-status').getContext('2d');
             if (graficoStatus) graficoStatus.destroy(); 
             graficoStatus = new Chart(ctxStatus, {
@@ -215,10 +235,28 @@
                         hoverOffset: 4
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: true }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: true,
+                    // --- NOVO: Lógica de clique para filtrar o MAPA ---
+                    plugins: {
+                        legend: {
+                            onClick: (e, legendItem, legend) => {
+                                // 1. Atualiza o nosso objeto de filtro
+                                filtrosStatus[legendItem.text] = !legend.chart.getDataVisibility(legendItem.index);
+                                
+                                // 2. Executa a ação padrão (esconder/mostrar a fatia)
+                                Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
+                                
+                                // 3. Manda atualizar APENAS o mapa
+                                atualizarMapaPins();
+                            }
+                        }
+                    }
+                }
             });
 
-            // Gráfico de Tipos
+            // --- Gráfico de Tipos (Sempre com o TOTAL) ---
             const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
             if (graficoTipos) graficoTipos.destroy(); 
             graficoTipos = new Chart(ctxTipos, {
@@ -268,17 +306,20 @@
                 
                 // 'onSnapshot' é o "ouvinte" em tempo real
                 onSnapshot(q, (snapshot) => {
-                    const dados = [];
+                    // 1. Atualiza a nossa base de dados global
+                    todosOsDados = []; 
                     snapshot.forEach((doc) => {
-                        // Importante: guardamos o .data() que é o objeto
-                        dados.push(doc.data()); 
+                        todosOsDados.push(doc.data()); 
                     });
 
-                    // Processa os dados recebidos
-                    processarDados(dados);
+                    // 2. Processa as métricas e gráficos (COM TODOS OS DADOS)
+                    processarMetricasEGraficos(todosOsDados);
+                    
+                    // 3. Atualiza os pinos do mapa (que vai usar os filtros)
+                    atualizarMapaPins(); 
 
                     // Mostra feedback de sucesso
-                    if (dados.length === 0) {
+                    if (todosOsDados.length === 0) {
                         mostrarFeedback('info', 'Nenhuma ocorrência encontrada.');
                     } else {
                         feedbackMsg.classList.add('hidden'); // Esconde o feedback
@@ -298,3 +339,4 @@
     </script>
 </body>
 </html>
+
