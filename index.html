@@ -127,7 +127,7 @@
         let graficoStatus = null;
         let graficoTipos = null;
 
-        // --- NOVO: Variáveis Globais para dados e filtros ---
+        // --- Variáveis Globais para dados e filtros ---
         let todosOsDados = []; // Onde guardamos TODOS os dados vindos do Firebase
         let filtrosStatus = { // O estado atual dos nossos filtros
             'Pendente': true,
@@ -156,10 +156,9 @@
             feedbackMsg.classList.remove('hidden');
         }
 
-        // --- 2. NOVO: Função para atualizar APENAS os Pinos do Mapa ---
-        // Esta função lê os dados globais e aplica os filtros
+        // --- 2. Atualizar APENAS os Pinos do Mapa ---
         function atualizarMapaPins() {
-            if (!layerGrupo) inicializarMapa(); // Garante que o mapa está pronto
+            if (!layerGrupo) inicializarMapa(); 
             layerGrupo.clearLayers();
 
             const iconPendente = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-vermelho"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
@@ -168,7 +167,7 @@
 
             // Filtra os dados com base nos filtros de status
             const dadosFiltrados = todosOsDados.filter(item => {
-                const status = item.status || 'Pendente'; // Assume 'Pendente' se não houver
+                const status = item.status || 'Pendente'; 
                 return filtrosStatus[status]; // Retorna true se o status estiver visível
             });
 
@@ -198,7 +197,6 @@
 
 
         // --- 3. Processar Dados (Métricas e Gráficos) ---
-        // Esta função agora processa TODOS os dados, mas NÃO mexe no mapa
         function processarMetricasEGraficos(dados) {
             let total = dados.length;
             let pendentes = 0;
@@ -207,12 +205,10 @@
             let tipos = {};
 
             dados.forEach(item => {
-                // Contagem de Status
                 if (item.status === 'Resolvido') { resolvidos++; }
                 else if (item.status === 'Em Andamento') { emAndamento++; }
                 else { pendentes++; }
                 
-                // Contagem de Tipos
                 if (item.tipo) { tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; }
             });
 
@@ -221,7 +217,7 @@
             pendenteMetric.textContent = pendentes;
             resolvidoMetric.textContent = resolvidos;
 
-            // --- Gráfico de Status (Sempre com o TOTAL) ---
+            // --- Gráfico de Status (COM FILTRO) ---
             const ctxStatus = document.getElementById('grafico-status').getContext('2d');
             if (graficoStatus) graficoStatus.destroy(); 
             graficoStatus = new Chart(ctxStatus, {
@@ -238,9 +234,26 @@
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: true,
-                    // --- NOVO: Lógica de clique para filtrar o MAPA ---
+                    // --- CORREÇÃO: Lógica de clique para filtrar o MAPA ---
+                    onClick: (e, elements, chart) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const label = chart.data.labels[index];
+                            
+                            // 1. Inverte o filtro
+                            filtrosStatus[label] = !filtrosStatus[label];
+                            
+                            // 2. Atualiza visualmente o gráfico (mostra/esconde)
+                            chart.toggleDataVisibility(index);
+                            chart.update();
+
+                            // 3. Manda atualizar APENAS o mapa
+                            atualizarMapaPins();
+                        }
+                    },
                     plugins: {
                         legend: {
+                            // Esta é a função que o Chart.js usa para o clique na legenda
                             onClick: (e, legendItem, legend) => {
                                 // 1. Atualiza o nosso objeto de filtro
                                 filtrosStatus[legendItem.text] = !legend.chart.getDataVisibility(legendItem.index);
@@ -273,7 +286,13 @@
                     responsive: true, maintainAspectRatio: true, indexAxis: 'y',
                     scales: { 
                         y: { beginAtZero: true },
-                        x: { ticks: { stepSize: (total > 0) ? 1 : undefined } } 
+                        x: { ticks: { stepSize: (total > 0 && total < 10) ? 1 : undefined } } 
+                    },
+                    // --- NOVO: Suprime a legenda (barra azul) ---
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
                     }
                 }
             });
