@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-R">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Radar Cidadão - Santa Cruz do Capibaribe</title>
     <!-- Tailwind CSS -->
@@ -24,241 +24,268 @@
             background-color: #f3f4f6; /* bg-gray-100 */
         }
         /* Ícones personalizados para o Leaflet */
-        .pin-vermelho { color: #DC2626; } /* red-600 */
-        .pin-amarelo { color: #F59E0B; } /* amber-500 */
-        /* Verde da bandeira */
-        .pin-verde { color: #15803d; } /* green-700 */
-
-        /* Cores personalizadas da bandeira */
+        .pin-vermelho { color: #dc2626; } /* red-600 */
+        .pin-verde { color: #16a34a; } /* green-600 */
+        
+        /* Cores da Bandeira SCC */
         .scc-blue { color: #312e81; } /* indigo-900 */
         .scc-green { color: #15803d; } /* green-700 */
         .scc-bg-blue { background-color: #312e81; }
         .scc-bg-green { background-color: #15803d; }
-
-        /* Animação de loading simples */
-        .spinner-pulse {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
-        }
+        
+        /* Cores de Status */
+        .status-red-text { color: #b91c1c; } /* red-700 */
+        .status-red-bg { background-color: #fee2e2; } /* red-100 */
+        .status-green-text { color: #14532d; } /* green-800 */
+        .status-green-bg { background-color: #dcfce7; } /* green-100 */
     </style>
 </head>
-<body class="bg-gray-100 p-4 md:p-8">
+<body class="bg-gray-100 min-h-screen p-4 md:p-8">
 
     <div class="max-w-7xl mx-auto">
-        
-        <!-- HEADER -->
-        <header class="mb-8 p-6 bg-white rounded-lg shadow-md">
+        <!-- Cabeçalho -->
+        <header class="scc-bg-blue p-6 rounded-lg shadow-lg mb-8">
             <div class="flex flex-col md:flex-row items-center justify-between">
                 <div>
-                    <h1 class="text-4xl font-bold scc-blue">Radar Cidadão</h1>
-                    <p class="text-lg text-gray-600">Santa Cruz do Capibaribe</p>
+                    <h1 class="text-3xl font-bold text-white">Radar Cidadão</h1>
+                    <p class="text-sm text-indigo-200">Santa Cruz do Capibaribe</p>
                 </div>
-                 <!-- Mini-bandeira estilizada -->
-                <div class="flex mt-4 md:mt-0 shadow-sm">
-                    <div class="w-12 h-8 scc-bg-blue rounded-l-sm"></div>
-                    <div class="w-12 h-8 bg-white"></div>
+                <div class="flex shadow-sm mt-4 md:mt-0">
+                    <div class="w-12 h-8 bg-white rounded-l-sm"></div>
                     <div class="w-12 h-8 scc-bg-green rounded-r-sm"></div>
                 </div>
             </div>
         </header>
 
-        <!-- Métricas Principais -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
-                <div>
-                    <div class="text-sm font-medium text-gray-500">Total de Ocorrências</div>
-                    <div id="total-metric" class="text-3xl font-bold scc-blue spinner-pulse">...</div>
-                </div>
-                <i class="fas fa-bullhorn fa-2x text-indigo-400 opacity-50"></i>
-            </div>
-            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
-                <div>
-                    <div class="text-sm font-medium text-gray-500">Pendentes</div>
-                    <div id="pendente-metric" class="text-3xl font-bold text-red-600 spinner-pulse">...</div>
-                </div>
-                <i class="fas fa-clock fa-2x text-red-400 opacity-50"></i>
-            </div>
-            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
-                <div>
-                    <div class="text-sm font-medium text-gray-500">Resolvidas</div>
-                    <div id="resolvido-metric" class="text-3xl font-bold scc-green spinner-pulse">...</div>
-                </div>
-                <i class="fas fa-check-circle fa-2x text-green-400 opacity-50"></i>
-            </div>
+        <!-- Estado de Carregamento / Erro -->
+        <div id="feedback-container" class="text-center p-10 bg-white rounded-lg shadow-md">
+            <p id="feedback-texto" class="text-lg font-medium text-gray-700">
+                <i class="fas fa-spinner fa-spin mr-2"></i>
+                A carregar dados...
+            </p>
         </div>
 
-        <!-- Mensagem de Erro/Loading -->
-        <div id="loading-msg" class="text-center p-6 bg-white rounded-lg shadow-md mb-8">
-            <h2 class="text-xl font-semibold scc-blue flex items-center justify-center">
-                <i class="fas fa-spinner fa-spin mr-3"></i> A carregar dados reais...
-            </h2>
-        </div>
-        <div id="error-msg" class="hidden text-center p-6 bg-red-100 text-red-700 rounded-lg shadow-md mb-8">
-            <h2 class="text-xl font-semibold flex items-center justify-center">
-                <i class="fas fa-exclamation-triangle mr-3"></i> Não foi possível carregar os dados.
-            </h2>
-            <p id="error-details"></p>
-        </div>
-
-
-        <!-- Mapa e Gráficos -->
-        <div id="dashboard-content" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            <!-- Coluna do Mapa (ocupa 2 colunas no lg) -->
-            <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Mapa de Ocorrências</h2>
-                <div id="mapa" class="w-full z-0"></div>
-            </div>
-
-            <!-- Coluna dos Gráficos -->
-            <div class="lg:col-span-1 space-y-8">
+        <!-- Conteúdo Principal (Escondido por defeito) -->
+        <main id="conteudo-principal" class="hidden">
+            <!-- Métricas -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Ocorrências por Tipo</h2>
-                    <canvas id="grafico-tipos"></canvas>
+                    <h2 class="text-sm font-medium text-gray-500 mb-2">OCORRÊNCIAS TOTAIS</h2>
+                    <p id="metric-total" class="text-4xl font-bold scc-blue">0</p>
                 </div>
-                <div class="bg-white p-6 rounded-lg shadow-md">
-                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Status Geral</h2>
-                    <canvas id="grafico-status"></canvas>
+                <div class="bg-white p-6 rounded-lg shadow-md status-red-bg">
+                    <h2 class="text-sm font-medium status-red-text mb-2">PENDENTES</h2>
+                    <p id="metric-pendentes" class="text-4xl font-bold status-red-text">0</p>
                 </div>
-            </div>
-        </div>
+                <div class="bg-white p-6 rounded-lg shadow-md status-green-bg">
+                    <h2 class="text-sm font-medium status-green-text mb-2">RESOLVIDAS</h2>
+                    <p id="metric-resolvidos" class="text-4xl font-bold status-green-text">0</p>
+                </div>
+            </section>
+
+            <!-- Mapa e Gráficos -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Mapa (Ocupa 2 colunas) -->
+                <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-4">Mapa de Ocorrências</h2>
+                    <div id="mapa"></div>
+                </div>
+
+                <!-- Gráficos (Ocupa 1 coluna) -->
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Status</h2>
+                        <canvas id="grafico-status"></canvas>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h2 class="text-xl font-semibold mb-4">Tipos de Ocorrência</h2>
+                        <canvas id="grafico-tipos"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
     </div>
 
-    <!-- Leaflet JS (para o mapa) -->
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
     <script>
-        // --- URL DA API (Apps Script) ---
-        // ESTA URL DEVE SER A MESMA DO SEU FICHEIRO DE INPUT
-        const URL_DO_SEU_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbwXOVccvx8EBVPd0pHu-wxPKL4Uri_1OtAd2aJMO83AfachaAPZSk_jXTo77ABGwzTh/exec";
+        // --- URL DA SUA NOVA APLICAÇÃO WEB (IMPLEMENTAÇÃO 5) ---
+        const URL_DO_SEU_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbwh5TKwuHw9uVHesJMh8o0ETE4OevysuhmAq3jBAPAkiNZek153avwt3FLmlH--Vuze/exec";
 
-        // --- CORES DA BANDEIRA PARA OS GRÁFICOS ---
-        const corAzulSCC = '#312e81'; // indigo-900
-        const corVerdeSCC = '#15803d'; // green-700
-        const corAmarelaSCC = '#f59e0b'; // amber-500 (das estrelas)
-        const corVermelhaStatus = '#DC2626'; // red-600 (Pendente)
+        // Elementos do DOM
+        const feedbackContainer = document.getElementById('feedback-container');
+        const feedbackTexto = document.getElementById('feedback-texto');
+        const conteudoPrincipal = document.getElementById('conteudo-principal');
 
-        // Variáveis globais para os gráficos
+        // Métricas
+        const metricTotal = document.getElementById('metric-total');
+        const metricPendentes = document.getElementById('metric-pendentes');
+        const metricResolvidos = document.getElementById('metric-resolvidos');
+
+        // Variáveis globais para mapa e gráficos (para destruir antes de recriar)
+        let mapa = null;
         let graficoStatus = null;
         let graficoTipos = null;
 
-        // --- DADOS DE SIMULAÇÃO REMOVIDOS ---
-        // const dadosOcorrencias = [ ... ];
+        // Cores
+        const corAzulSCC = '#312e81';
+        const corVerdeSCC = '#15803d';
+        const corAmarelaSCC = '#f59e0b'; // Cor para "Em Andamento"
+        const corVermelhaStatus = '#dc2626';
 
-        // --- FUNÇÃO PRINCIPAL PARA CARREGAR DADOS REAIS ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            const loadingMsg = document.getElementById('loading-msg');
-            const errorMsg = document.getElementById('error-msg');
-            const errorDetails = document.getElementById('error-details');
-            const dashboardContent = document.getElementById('dashboard-content');
-            
+        /**
+         * Função Principal: Carrega os dados da API
+         */
+        async function carregarDados() {
             try {
-                // 1. Buscar dados reais do Apps Script (GET request)
-                const response = await fetch(URL_DO_SEU_APPS_SCRIPT);
-                
+                const response = await fetch(URL_DO_SEU_APPS_SCRIPT, {
+                    cache: 'no-cache' // Garante que não usamos cache de erro
+                });
+
                 if (!response.ok) {
-                    throw new Error(`Erro na rede: ${response.status} ${response.statusText}`);
+                    throw new Error(`Erro HTTP: ${response.status}`);
                 }
 
-                const resultado = await response.json();
+                const dadosJson = await response.json();
 
-                if (resultado.status !== 'success') {
-                    throw new Error(resultado.message || 'O script retornou um erro.');
+                if (dadosJson.status === 'success') {
+                    // Sucesso! Vamos processar os dados
+                    if (dadosJson.data && dadosJson.data.length > 0) {
+                        processarDados(dadosJson.data);
+                    } else {
+                        // Sucesso, mas sem dados
+                        mostrarFeedback('info', 'Nenhuma ocorrência encontrada.');
+                        processarDados([]); // Mostra o dashboard vazio
+                    }
+                    // Mostra o conteúdo principal e esconde o 'loading'
+                    feedbackContainer.classList.add('hidden');
+                    conteudoPrincipal.classList.remove('hidden');
+
+                } else {
+                    // Erro retornado pela API (Ex: "Folha 'Dados' não encontrada")
+                    throw new Error(dadosJson.message || 'Erro desconhecido da API');
                 }
-
-                const dadosOcorrencias = resultado.data;
-
-                // 2. Esconder loading, mostrar dashboard
-                loadingMsg.classList.add('hidden');
-                dashboardContent.classList.remove('hidden');
-
-                // 3. Iniciar o dashboard com os dados reais
-                iniciarDashboard(dadosOcorrencias);
 
             } catch (error) {
-                console.error("Erro ao carregar dados do dashboard:", error);
-                loadingMsg.classList.add('hidden');
-                errorMsg.classList.remove('hidden');
-                errorDetails.textContent = error.message;
+                console.error("Erro detalhado ao buscar dados:", error);
+                mostrarFeedback('error', `Não foi possível carregar os dados.<br><small>Detalhe: ${error.message}</small>`);
             }
-        });
+        }
 
-        // --- FUNÇÃO PARA INICIAR O DASHBOARD (MAPA, MÉTRICAS, GRÁFICOS) ---
-        function iniciarDashboard(dadosOcorrencias) {
+        /**
+         * Mostra feedback de carregamento, erro ou informação
+         */
+        function mostrarFeedback(tipo, mensagem) {
+            feedbackContainer.classList.remove('hidden');
+            conteudoPrincipal.classList.add('hidden');
             
-            // --- 1. Inicializar o Mapa ---
-            const centroMapa = [-7.952, -36.205];
-            const mapa = L.map('mapa').setView(centroMapa, 15);
+            let icone = '<i class="fas fa-spinner fa-spin mr-2"></i>'; // Padrão (loading)
+            if (tipo === 'error') {
+                icone = '<i class="fas fa-times-circle text-red-600 mr-2"></i>';
+            } else if (tipo === 'info') {
+                icone = '<i class="fas fa-info-circle text-blue-600 mr-2"></i>';
+            }
+            feedbackTexto.innerHTML = `${icone} ${mensagem}`;
+        }
 
+        /**
+         * Processa os dados e constrói o dashboard
+         */
+        function processarDados(dados) {
+            let total = dados.length;
+            let pendentes = 0;
+            let resolvidos = 0;
+            let emAndamento = 0; // Futuro
+            let tipos = {};
+
+            // Filtra dados inválidos (caso haja linhas vazias)
+            const dadosValidos = dados.filter(d => d.Latitude && d.Longitude && d.Tipo && d.Status);
+            
+            total = dadosValidos.length;
+
+            dadosValidos.forEach(d => {
+                // Processa Status
+                if (d.Status === 'Pendente') {
+                    pendentes++;
+                } else if (d.Status === 'Resolvido') {
+                    resolvidos++;
+                }
+
+                // Processa Tipos
+                tipos[d.Tipo] = (tipos[d.Tipo] || 0) + 1;
+            });
+
+            // 1. Atualizar Métricas
+            metricTotal.textContent = total;
+            metricPendentes.textContent = pendentes;
+            metricResolvidos.textContent = resolvidos;
+
+            // 2. Criar Mapa
+            // Centro aproximado de Santa Cruz do Capibaribe
+            const centroMapa = [-7.954, -36.204]; 
+            
+            // Destrói mapa anterior se existir
+            if (mapa) {
+                mapa.remove();
+            }
+            
+            mapa = L.map('mapa').setView(centroMapa, 14);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(mapa);
 
-            // Define ícones personalizados
-            const iconePendente = L.divIcon({ className: 'pin-vermelho', html: '<i class="fas fa-map-pin fa-3x"></i>', iconSize: [30, 30], iconAnchor: [15, 30] });
-            const iconeEmAndamento = L.divIcon({ className: 'pin-amarelo', html: '<i class="fas fa-map-pin fa-3x"></i>', iconSize: [30, 30], iconAnchor: [15, 30] });
-            const iconeResolvido = L.divIcon({ className: 'pin-verde', html: '<i class="fas fa-map-pin fa-3x"></i>', iconSize: [30, 30], iconAnchor: [15, 30] });
+            // Ícones personalizados
+            const iconeVermelho = L.divIcon({
+                className: 'pin-vermelho',
+                html: '<i class="fas fa-map-marker-alt fa-3x"></i>',
+                iconSize: [30, 42],
+                iconAnchor: [15, 42]
+            });
+            const iconeVerde = L.divIcon({
+                className: 'pin-verde',
+                html: '<i class="fas fa-map-marker-alt fa-3x"></i>',
+                iconSize: [30, 42],
+                iconAnchor: [15, 42]
+            });
 
-            // Adiciona os pinos (marcadores) ao mapa
-            dadosOcorrencias.forEach(ocorrencia => {
-                let icone;
-                // O Status 'Pendente' é o default e pode vir vazio
-                if (ocorrencia.status === 'Resolvido') icone = iconeResolvido;
-                else if (ocorrencia.status === 'Em Andamento') icone = iconeEmAndamento;
-                else icone = iconePendente; // Default é Pendente
-
-                L.marker([ocorrencia.latitude, ocorrencia.longitude], { icon: icone })
+            // Adicionar marcadores
+            dadosValidos.forEach(d => {
+                const icone = (d.Status === 'Resolvido') ? iconeVerde : iconeVermelho;
+                L.marker([d.Latitude, d.Longitude], { icon: icone })
                     .addTo(mapa)
-                    .bindPopup(`<b>${ocorrencia.tipo}</b><br>Status: ${ocorrencia.status || 'Pendente'}<br><small>${ocorrencia.descricao}</small>`);
+                    .bindPopup(`<b>${d.Tipo}</b><br>${d.Descricao || 'Sem descrição'}<br>Status: ${d.Status}`);
             });
-
-            // --- 2. Processar Dados para Métricas e Gráficos ---
-            let total = dadosOcorrencias.length;
-            let pendentes = 0;
-            let resolvidos = 0;
-            let emAndamento = 0;
-            let tipos = {};
-
-            dadosOcorrencias.forEach(o => {
-                const status = o.status || 'Pendente'; // Trata status vazio como Pendente
-                if (status === 'Pendente') pendentes++;
-                else if (status === 'Em Andamento') emAndamento++;
-                else if (status === 'Resolvido') resolvidos++;
-                
-                tipos[o.tipo] = (tipos[o.tipo] || 0) + 1;
-            });
-
-            // Atualiza métricas
-            document.getElementById('total-metric').textContent = total;
-            document.getElementById('pendente-metric').textContent = pendentes;
-            document.getElementById('resolvido-metric').textContent = resolvidos;
-            // Remove animação de pulso das métricas
-            document.querySelectorAll('.spinner-pulse').forEach(el => el.classList.remove('spinner-pulse'));
-
-            // --- 3. Renderizar Gráficos ---
             
-            // Gráfico de Status (Doughnut)
+            // Ajustar o zoom para caber todos os marcadores (se houver marcadores)
+            if (dadosValidos.length > 0) {
+                 const group = new L.featureGroup(dadosValidos.map(d => L.marker([d.Latitude, d.Longitude])));
+                 mapa.fitBounds(group.getBounds().pad(0.2));
+            }
+
+
+            // 3. Gráfico de Status (Doughnut)
             const ctxStatus = document.getElementById('grafico-status').getContext('2d');
-            if (graficoStatus) graficoStatus.destroy(); // Destrói gráfico anterior se existir
+            if (graficoStatus) graficoStatus.destroy(); // Destrói gráfico anterior
+            
             graficoStatus = new Chart(ctxStatus, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Pendente', 'Em Andamento', 'Resolvido'],
+                    labels: ['Pendente', 'Resolvido'], // Simplificado
                     datasets: [{
                         label: 'Status',
-                        data: [pendentes, emAndamento, resolvidos],
-                        backgroundColor: [corVermelhaStatus, corAmarelaSCC, corVerdeSCC],
+                        data: [pendentes, resolvidos],
+                        backgroundColor: [corVermelhaStatus, corVerdeSCC],
                         hoverOffset: 4
                     }]
                 },
                 options: { responsive: true, maintainAspectRatio: true }
             });
 
-            // Gráfico de Tipos (Bar)
+            // 4. Gráfico de Tipos (Bar)
             const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
-            if (graficoTipos) graficoTipos.destroy(); // Destrói gráfico anterior se existir
+            if (graficoTipos) graficoTipos.destroy(); // Destrói gráfico anterior
+            
             graficoTipos = new Chart(ctxTipos, {
                 type: 'bar',
                 data: {
@@ -266,17 +293,24 @@
                     datasets: [{
                         label: 'Nº de Ocorrências',
                         data: Object.values(tipos),
-                        backgroundColor: [ corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus ],
+                        backgroundColor: [ corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus ], // Cores variadas
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
                     indexAxis: 'y', // Gráfico de barras horizontal
-                    scales: { y: { beginAtZero: true } }
+                    scales: { 
+                        y: { beginAtZero: true },
+                        x: { ticks: { stepSize: 1 } } // Força a escala a ser 1, 2, 3...
+                    }
                 }
             });
         }
+
+        // --- Iniciar o carregamento dos dados quando a página carregar ---
+        document.addEventListener('DOMContentLoaded', carregarDados);
+
     </script>
 </body>
 </html>
