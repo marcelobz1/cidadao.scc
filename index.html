@@ -272,13 +272,16 @@
                     plugins: {
                         legend: {
                             onClick: (e, legendItem, legend) => {
-                                // 1. Executa a ação padrão (adiciona o traço)
-                                Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
-                                
+                                // 1. Inverte o estado 'hidden' manualmente
+                                legendItem.hidden = !legendItem.hidden;
+
                                 // 2. Atualiza o nosso objeto de filtro
-                                filtrosStatus[legendItem.text] = !legendItem.hidden;
+                                filtrosStatus[legendItem.text] = !legendItem.hidden; // O estado agora é o novo
+
+                                // 3. Manda o Chart.js atualizar (para mostrar o traço)
+                                legend.chart.update(); 
                                 
-                                // 3. Manda atualizar o resto do dashboard
+                                // 4. Manda atualizar o resto do dashboard
                                 aplicarFiltrosEAtualizarDashboard();
                             }
                         }
@@ -430,5 +433,9 @@
     </script>
 </body>
 </html>
+
+
+
+
 
 
