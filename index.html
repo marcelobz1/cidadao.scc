@@ -134,8 +134,8 @@
             'Em Andamento': true,
             'Resolvido': true
         };
-        let filtrosTipo = {}; // NOVO: Filtro para os tipos de ocorrência
-        let coresTipos = {}; // NOVO: Para guardar as cores originais das barras
+        // REMOVIDO: let filtrosTipo = {};
+        // REMOVIDO: let coresTipos = {};
 
         // Cores
         const corAzulSCC = '#312e81';
@@ -164,17 +164,12 @@
         // Esta função é chamada sempre que um filtro muda
         function aplicarFiltrosEAtualizarDashboard() {
             
-            // 1. Aplicar AMBOS os filtros aos dados principais
+            // 1. Aplicar SÓ o filtro de status
             const dadosFiltrados = todosOsDados.filter(item => {
                 const status = item.status || 'Pendente'; 
-                const tipo = item.tipo || null;
                 
-                // Se o tipo não existir no filtro (é novo), default to true
-                if (tipo && filtrosTipo[tipo] === undefined) {
-                    filtrosTipo[tipo] = true; 
-                }
-
-                return filtrosStatus[status] && filtrosTipo[tipo]; 
+                // Retorna true se o status estiver 'true' no nosso objeto de filtro
+                return filtrosStatus[status]; 
             });
 
             // 2. Atualizar o Mapa
@@ -268,20 +263,17 @@
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: true,
-                    // CORRIGIDO: Lógica de clique manual
+                    // CORRIGIDO: Lógica de clique APENAS na legenda, com "tracejado"
                     plugins: {
                         legend: {
                             onClick: (e, legendItem, legend) => {
-                                // 1. Inverte manualmente o estado 'hidden'
-                                legendItem.hidden = !legendItem.hidden;
+                                // 1. Executa a ação padrão do Chart.js (que aplica o 'tracejado' E esconde a fatia)
+                                Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
                                 
-                                // 2. Atualiza o nosso objeto de filtro
+                                // 2. Agora, 'legendItem.hidden' está atualizado. Lemos o novo estado.
                                 filtrosStatus[legendItem.text] = !legendItem.hidden; 
                                 
-                                // 3. Força o gráfico a atualizar-se (para aplicar o tracejado E esconder/mostrar a fatia)
-                                legend.chart.update(); 
-                                
-                                // 4. Manda atualizar o resto do dashboard
+                                // 3. Manda atualizar o RESTO do dashboard (Mapa, Métricas, Gráfico de Barras)
                                 aplicarFiltrosEAtualizarDashboard();
                             }
                         }
@@ -297,18 +289,12 @@
             dados.forEach((item, index) => {
                 if (item.tipo) { 
                     tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; 
-                    if (!coresTipos[item.tipo]) { // Guarda a cor original
-                        coresTipos[item.tipo] = coresBase[Object.keys(coresTipos).length % coresBase.length];
-                    }
-                    if (filtrosTipo[item.tipo] === undefined) { // Popula o filtro
-                        filtrosTipo[item.tipo] = true;
-                    }
                 }
             });
 
-            const labelsTipos = Object.keys(tipos);
-            const backgroundColors = labelsTipos.map(label => {
-                return filtrosTipo[label] ? coresTipos[label] : corCinzaFiltro;
+            // Simplificado: as cores agora são fixas
+            const backgroundColors = Object.keys(tipos).map((tipo, index) => {
+                return coresBase[index % coresBase.length];
             });
 
             const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
@@ -316,7 +302,7 @@
             graficoTipos = new Chart(ctxTipos, {
                 type: 'bar',
                 data: {
-                    labels: labelsTipos,
+                    labels: Object.keys(tipos),
                     datasets: [{
                         label: 'Nº de Ocorrências',
                         data: Object.values(tipos),
@@ -331,25 +317,8 @@
                     },
                     plugins: {
                         legend: { display: false }
-                    },
-                    onClick: (e, elements, chart) => {
-                        if (elements.length > 0) {
-                            const index = elements[0].index;
-                            const label = chart.data.labels[index];
-                            
-                            // 1. Inverte o filtro
-                            filtrosTipo[label] = !filtrosTipo[label];
-                            
-                            // 2. Manda atualizar o resto do dashboard
-                            aplicarFiltrosEAtualizarDashboard();
-                            
-                            // 3. Atualiza as cores DESTE gráfico
-                            chart.data.datasets[0].backgroundColor = chart.data.labels.map(l => {
-                                return filtrosTipo[l] ? coresTipos[l] : corCinzaFiltro;
-                            });
-                            chart.update();
-                        }
                     }
+                    // REMOVIDO: O 'onClick' foi removido deste gráfico
                 }
             });
         }
@@ -368,9 +337,13 @@
             // Atualiza os dados do gráfico de tipos
             graficoTipos.data.labels = Object.keys(tipos);
             graficoTipos.data.datasets[0].data = Object.values(tipos);
-            graficoTipos.data.datasets[0].backgroundColor = graficoTipos.data.labels.map(l => {
-                return filtrosTipo[l] ? coresTipos[l] : corCinzaFiltro;
+            
+            // Atualiza as cores (para o caso de a ordem/número de tipos mudar)
+            const coresBase = [corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus, '#6366f1', '#ec4899'];
+            graficoTipos.data.datasets[0].backgroundColor = graficoTipos.data.labels.map((tipo, index) => {
+                return coresBase[index % coresBase.length];
             });
+            
             graficoTipos.update();
         }
 
@@ -433,11 +406,3 @@
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
