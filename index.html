@@ -134,12 +134,15 @@
             'Em Andamento': true,
             'Resolvido': true
         };
+        let filtrosTipo = {}; // NOVO: Filtro para os tipos de ocorrência
+        let coresTipos = {}; // NOVO: Para guardar as cores originais das barras
 
         // Cores
         const corAzulSCC = '#312e81';
         const corVerdeSCC = '#15803d';
         const corAmarelaSCC = '#f59e0b';
         const corVermelhaStatus = '#dc2626';
+        const corCinzaFiltro = '#d1d5db'; // gray-300
 
         // --- 1. Função de Feedback ---
         function mostrarFeedback(tipo, mensagem) {
@@ -156,7 +159,7 @@
             feedbackMsg.classList.remove('hidden');
         }
 
-        // --- 2. Atualizar APENAS os Pinos do Mapa ---
+        // --- 2. ATUALIZADO: Atualizar os Pinos do Mapa (agora com 2 filtros) ---
         function atualizarMapaPins() {
             if (!layerGrupo) inicializarMapa(); 
             layerGrupo.clearLayers();
@@ -165,10 +168,17 @@
             const iconEmAndamento = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-amarelo"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
             const iconResolvido = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-verde"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
 
-            // Filtra os dados com base nos filtros de status
+            // Filtra os dados com base em AMBOS os filtros
             const dadosFiltrados = todosOsDados.filter(item => {
                 const status = item.status || 'Pendente'; 
-                return filtrosStatus[status]; // Retorna true se o status estiver visível
+                const tipo = item.tipo || null;
+                
+                // Se o tipo não existir no filtro (é novo), default to true
+                if (tipo && filtrosTipo[tipo] === undefined) {
+                    filtrosTipo[tipo] = true; 
+                }
+
+                return filtrosStatus[status] && filtrosTipo[tipo]; 
             });
 
             // Adiciona apenas os pinos filtrados ao mapa
@@ -193,17 +203,35 @@
                     layerGrupo.addLayer(marcador);
                 } catch(e) { console.warn("Erro ao adicionar pino:", e); }
             });
+            
+            // ATUALIZADO: Atualiza também as métricas e gráficos com os dados filtrados
+            processarMetricasEGraficos(dadosFiltrados, true); // Passa 'true' para não re-filtrar os tipos
         }
 
 
-        // --- 3. Processar Dados (Métricas e Gráficos) ---
-        function processarMetricasEGraficos(dados) {
+        // --- 3. ATUALIZADO: Processar Dados (Métricas e Gráficos) ---
+        // 'dados' aqui podem ser todos os dados, ou os dados já filtrados
+        // 'apenasAtualizar' evita que os filtros de tipo sejam resetados
+        function processarMetricasEGraficos(dados, apenasAtualizar = false) {
             let total = dados.length;
             let pendentes = 0;
             let resolvidos = 0;
             let emAndamento = 0; 
             let tipos = {};
+            
+            // Se estamos a atualizar TUDO (v_F_ = false),
+            // temos de recalcular os tipos E resetar os filtros de tipo
+            if (!apenasAtualizar) { 
+                filtrosTipo = {}; 
+                coresTipos = {};
+                todosOsDados.forEach(item => {
+                    if (item.tipo) {
+                        filtrosTipo[item.tipo] = true; // Default = todos visíveis
+                    }
+                });
+            }
 
+            // Agora contamos com base nos dados (possivelmente filtrados)
             dados.forEach(item => {
                 if (item.status === 'Resolvido') { resolvidos++; }
                 else if (item.status === 'Em Andamento') { emAndamento++; }
@@ -212,7 +240,8 @@
                 if (item.tipo) { tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; }
             });
 
-            // --- Atualizar Métricas (Sempre com o TOTAL) ---
+            // --- Atualizar Métricas (Sempre com o TOTAL dos dados filtrados) ---
+            // A métrica "Total" agora reflete a seleção
             totalMetric.textContent = total;
             pendenteMetric.textContent = pendentes;
             resolvidoMetric.textContent = resolvidos;
@@ -234,32 +263,17 @@
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: true,
-                    // --- CORREÇÃO: Lógica de clique para filtrar o MAPA ---
-                    onClick: (e, elements, chart) => {
-                        if (elements.length > 0) {
-                            const index = elements[0].index;
-                            const label = chart.data.labels[index];
-                            
-                            // 1. Inverte o filtro
-                            filtrosStatus[label] = !filtrosStatus[label];
-                            
-                            // 2. Atualiza visualmente o gráfico (mostra/esconde)
-                            chart.toggleDataVisibility(index);
-                            chart.update();
-
-                            // 3. Manda atualizar APENAS o mapa
-                            atualizarMapaPins();
-                        }
-                    },
+                    // REMOVIDO o options.onClick
                     plugins: {
                         legend: {
-                            // Esta é a função que o Chart.js usa para o clique na legenda
+                            // CORRIGIDO: Lógica de clique na LEGENDA
                             onClick: (e, legendItem, legend) => {
-                                // 1. Atualiza o nosso objeto de filtro
-                                filtrosStatus[legendItem.text] = !legend.chart.getDataVisibility(legendItem.index);
-                                
-                                // 2. Executa a ação padrão (esconder/mostrar a fatia)
+                                // 1. Logica padrão do Chart.js para mostrar/esconder
                                 Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
+                                
+                                // 2. Atualiza o nosso objeto de filtro
+                                // A 'hidden' property agora está ATUALIZADA
+                                filtrosStatus[legendItem.text] = !legendItem.hidden;
                                 
                                 // 3. Manda atualizar APENAS o mapa
                                 atualizarMapaPins();
@@ -269,17 +283,31 @@
                 }
             });
 
-            // --- Gráfico de Tipos (Sempre com o TOTAL) ---
+            // --- Gráfico de Tipos (AGORA TAMBÉM FILTRÁVEL) ---
             const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
+            
+            const labelsTipos = Object.keys(tipos);
+            const coresBase = [corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus, '#6366f1', '#ec4899'];
+            
+            if (!apenasAtualizar) { // Só guarda as cores na primeira vez
+                 labelsTipos.forEach((label, index) => {
+                    coresTipos[label] = coresBase[index % coresBase.length];
+                });
+            }
+           
+            const backgroundColors = labelsTipos.map(label => {
+                return filtrosTipo[label] ? coresTipos[label] : corCinzaFiltro;
+            });
+
             if (graficoTipos) graficoTipos.destroy(); 
             graficoTipos = new Chart(ctxTipos, {
                 type: 'bar',
                 data: {
-                    labels: Object.keys(tipos),
+                    labels: labelsTipos,
                     datasets: [{
                         label: 'Nº de Ocorrências',
                         data: Object.values(tipos),
-                        backgroundColor: [ corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus ],
+                        backgroundColor: backgroundColors, // Usa as cores com filtro
                     }]
                 },
                 options: {
@@ -288,10 +316,31 @@
                         y: { beginAtZero: true },
                         x: { ticks: { stepSize: (total > 0 && total < 10) ? 1 : undefined } } 
                     },
-                    // --- NOVO: Suprime a legenda (barra azul) ---
                     plugins: {
-                        legend: {
-                            display: false
+                        legend: { display: false },
+                        // NOVO: Clique nas BARRAS para filtrar
+                        tooltip: {
+                            // Desativa o clique no tooltip para não atrapalhar
+                            enabled: false 
+                        }
+                    },
+                    // NOVO: Lógica de clique no gráfico de barras
+                    onClick: (e, elements, chart) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const label = chart.data.labels[index];
+                            
+                            // 1. Inverte o filtro
+                            filtrosTipo[label] = !filtrosTipo[label];
+                            
+                            // 2. Manda atualizar o MAPA e as MÉTRICAS
+                            atualizarMapaPins();
+                            
+                            // 3. Atualiza as cores deste gráfico
+                            chart.data.datasets[0].backgroundColor = chart.data.labels.map(l => {
+                                return filtrosTipo[l] ? coresTipos[l] : corCinzaFiltro;
+                            });
+                            chart.update();
                         }
                     }
                 }
@@ -332,7 +381,7 @@
                     });
 
                     // 2. Processa as métricas e gráficos (COM TODOS OS DADOS)
-                    processarMetricasEGraficos(todosOsDados);
+                    processarMetricasEGraficos(todosOsDados, false); // 'false' = é um refresh total
                     
                     // 3. Atualiza os pinos do mapa (que vai usar os filtros)
                     atualizarMapaPins(); 
