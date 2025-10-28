@@ -95,15 +95,6 @@
           measurementId: "G-XYKDFXRPFX"
         };
         
-        // --- NOVO: Limites Geográficos de SCC ---
-        // (Estes valores definem um "retângulo" à volta da cidade)
-        const ZONA_SCC = {
-            minLat: -7.975, // Ponto mais a Sul
-            maxLat: -7.930, // Ponto mais a Norte
-            minLon: -36.240, // Ponto mais a Oeste
-            maxLon: -36.180  // Ponto mais a Leste
-        };
-
         // --- Inicializa o Firebase e o Firestore ---
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -122,17 +113,20 @@
         let dadosLatitude = null;
         let dadosLongitude = null;
 
-        // --- NOVA: Função de Verificação de Zona ---
-        function isDentroDaZona(lat, lon) {
-            const latitude = parseFloat(lat);
-            const longitude = parseFloat(lon);
-            return (
-                latitude >= ZONA_SCC.minLat &&
-                latitude <= ZONA_SCC.maxLat &&
-                longitude >= ZONA_SCC.minLon &&
-                longitude <= ZONA_SCC.maxLon
-            );
+        // --- NOVO: LÓGICA DO ID ANÓNIMO ---
+        function getOrCreateUserId() {
+            let userId = localStorage.getItem('radarCidadaoUserId');
+            if (!userId) {
+                // crypto.randomUUID() é um gerador de ID seguro e moderno
+                userId = crypto.randomUUID(); 
+                localStorage.setItem('radarCidadaoUserId', userId);
+            }
+            return userId;
         }
+        // Obtém o ID assim que o script carrega
+        const userIdAnonimo = getOrCreateUserId();
+        // --- FIM DA NOVA LÓGICA ---
+
 
         // --- 1. Lógica dos Botões de Tipo ---
         let tipoSelecionado = false;
@@ -151,34 +145,46 @@
             });
         });
 
-        // --- 2. Obter Geolocalização (MODIFICADO COM GEO-FENCING) ---
+        // --- 2. Obter Geolocalização E GEOFENCING ---
         let geolocPronta = false;
+        // Caixa delimitadora de Santa Cruz do Capibaribe
+        const sccBounds = {
+            norte: -7.92,
+            sul: -7.99,
+            leste: -36.17,
+            oeste: -36.23
+        };
+
         if ('geolocation' in navigator) {
             navigator.geolocation.getCurrentPosition(
                 (posicao) => {
-                    dadosLatitude = posicao.coords.latitude;
-                    dadosLongitude = posicao.coords.longitude;
+                    const lat = posicao.coords.latitude;
+                    const lon = posicao.coords.longitude;
 
-                    // --- VERIFICAÇÃO DE ZONA ---
-                    if (isDentroDaZona(dadosLatitude, dadosLongitude)) {
-                        statusGeoloc.innerHTML = `<i class="fas fa-check-circle text-green-600 mr-2"></i> Localização obtida (Santa Cruz do Capibaribe)!`;
+                    // Verifica o Geofencing
+                    if (lat < sccBounds.norte && lat > sccBounds.sul && lon < sccBounds.leste && lon > sccBounds.oeste) {
+                        // SUCESSO: Dentro da área
+                        dadosLatitude = lat;
+                        dadosLongitude = lon;
+                        statusGeoloc.innerHTML = `<i class="fas fa-check-circle text-green-600 mr-2"></i> Localização obtida com sucesso!`;
                         statusGeoloc.classList.add('bg-green-50', 'text-green-700');
                         geolocPronta = true;
                     } else {
+                        // ERRO: Fora da área
                         statusGeoloc.innerHTML = `<i class="fas fa-exclamation-triangle text-red-600 mr-2"></i> Fora da zona de serviço. Esta aplicação é apenas para Santa Cruz do Capibaribe.`;
                         statusGeoloc.classList.add('bg-red-50', 'text-red-700');
                         geolocPronta = false;
                     }
-                    verificarProntidao(); // Chama a verificação em ambos os casos
+                    verificarProntidao();
                 },
                 (erro) => {
+                    // ERRO: Permissão negada ou falha
                     console.error("Erro de Geolocalização: ", erro);
                     let msg = "Erro ao obter localização.";
                     if (erro.code === erro.PERMISSION_DENIED) { msg = "Geolocalização foi negada. Por favor, ative nas permissões."; }
                     statusGeoloc.innerHTML = `<i class="fas fa-times-circle text-red-600 mr-2"></i> ${msg}`;
                     statusGeoloc.classList.add('bg-red-50', 'text-red-700');
                     geolocPronta = false;
-                    verificarProntidao();
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
@@ -190,8 +196,6 @@
 
         // --- 3. Verificar Prontidão do Formulário ---
         function verificarProntidao() {
-            // Só ativa o botão se o TIPO estiver selecionado E a geolocalização
-            // estiver PRONTA (o que agora inclui estar DENTRO da zona)
             if (tipoSelecionado && geolocPronta) {
                 submitBtn.disabled = false;
             } else {
@@ -199,10 +203,9 @@
             }
         }
 
-        // --- 4. Envio do Formulário (Para o FIREBASE) ---
+        // --- 4. Envio do Formulário (AGORA COM O ID ANÓNIMO) ---
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            // A verificação 'geolocPronta' já nos protege de envios fora da zona
             if (!tipoSelecionado || !geolocPronta) return;
 
             submitBtn.disabled = true;
@@ -218,7 +221,8 @@
                     longitude: dadosLongitude,
                     descricao: inputDescricao.value,
                     status: "Pendente",
-                    timestamp: serverTimestamp() // Pega a hora do servidor Firebase
+                    timestamp: serverTimestamp(), // Pega a hora do servidor Firebase
+                    userId_anonimo: userIdAnonimo // <-- NOVO CAMPO ADICIONADO
                 };
 
                 // Envia para a coleção "ocorrencias" no Firestore
@@ -261,4 +265,3 @@
     </script>
 </body>
 </html>
-
