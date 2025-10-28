@@ -263,21 +263,19 @@
                 options: { 
                     responsive: true, 
                     maintainAspectRatio: true,
-                    // CORRIGIDO: Lógica de clique MANUAL para garantir o "tracejado"
+                    // CORRIGIDO: Esta é a lógica final que combina o "tracejado" com o filtro
                     plugins: {
                         legend: {
                             onClick: (e, legendItem, legend) => {
-                                // 1. Inverte manualmente o estado 'hidden' (isto é o que o Chart.js usa)
-                                legendItem.hidden = !legendItem.hidden;
+                                // 1. PRIMEIRO, executa a ação padrão do Chart.js
+                                // (Isto vai aplicar o "tracejado" no texto e esconder a fatia)
+                                Chart.defaults.plugins.legend.onClick(e, legendItem, legend);
                                 
-                                // 2. Atualiza o nosso objeto de filtro
+                                // 2. AGORA, lê o novo estado (se está 'hidden' ou não)
                                 filtrosStatus[legendItem.text] = !legendItem.hidden; 
                                 
-                                // 3. Força o gráfico a atualizar-se
-                                // (Isto aplica o "tracejado" E esconde/mostra a fatia)
-                                legend.chart.update(); 
-                                
-                                // 4. Manda atualizar o RESTO do dashboard
+                                // 3. MANDA ATUALIZAR O RESTO DO DASHBOARD
+                                // (Mapa, Métricas, Gráfico de Barras)
                                 aplicarFiltrosEAtualizarDashboard();
                             }
                         }
