@@ -130,7 +130,6 @@
 
         // --- Variáveis de Lógica ---
         let todosOsDados = [];
-        // NOSSOS DOIS OBJETOS DE FILTRO
         let filtrosStatus = { "Pendente": true, "Em Andamento": true, "Resolvido": true };
         let filtrosTipo = {}; // Será preenchido dinamicamente
 
@@ -171,12 +170,7 @@
             const dadosFiltradosFinal = todosOsDados.filter(item => {
                 const status = item.status || 'Pendente';
                 const tipo = item.tipo;
-
-                // Se um tipo é novo, considera-o 'true' por defeito
-                if (tipo && filtrosTipo[tipo] === undefined) { 
-                    filtrosTipo[tipo] = true; 
-                }
-                
+                if (tipo && filtrosTipo[tipo] === undefined) { filtrosTipo[tipo] = true; }
                 return filtrosStatus[status] && filtrosTipo[tipo];
             });
 
@@ -315,7 +309,14 @@
                 return {
                     label: tipo, // O nome clicável na legenda
                     data: [tipos[tipo]], // Um array com um só valor
-                    backgroundColor: coresBase[index % coresBase.length]
+                    backgroundColor: coresBase[index % coresBase.length],
+                    
+                    // #############################################
+                    // ### A CORREÇÃO ESTÁ AQUI ###
+                    // #############################################
+                    // Diz ao Chart.js se este item deve estar "escondido" (e tracejado)
+                    // com base no nosso objeto de filtro 'filtrosTipo'
+                    hidden: !filtrosTipo[tipo] 
                 };
             });
 
@@ -335,18 +336,16 @@
                     options: {
                         responsive: true,
                         plugins: {
-                            // ### AQUI ESTÁ A NOVA LÓGICA DE FILTRO ###
+                            // ### AQUI ESTÁ A LÓGICA DE FILTRO CORRIGIDA ###
                             legend: {
                                 display: true, // Garante que a legenda está visível
                                 onClick: (e, legendItem, legend) => {
-                                    // 1. Lógica do "tracejado"
-                                    legendItem.hidden = !legendItem.hidden;
-                                    // 2. Atualiza filtro de Tipo
-                                    filtrosTipo[legendItem.text] = !legendItem.hidden;
-                                    // 3. Atualiza gráfico
-                                    legend.chart.toggleDataVisibility(legendItem.index);
-                                    legend.chart.update();
-                                    // 4. Atualiza o resto
+                                    // 1. Atualiza o nosso objeto de filtro
+                                    filtrosTipo[legendItem.text] = !filtrosTipo[legendItem.text]; 
+                                    
+                                    // 2. Manda o dashboard inteiro atualizar-se
+                                    // A função 'atualizarGraficoTipos' vai ler o novo estado
+                                    // e aplicar o 'hidden: true' (tracejado)
                                     aplicarFiltrosEAtualizarDashboard();
                                 }
                             }
@@ -391,7 +390,8 @@
                         const data = doc.data();
                         todosOsDados.push(data); 
                         if (data.tipo && !filtrosTipo.hasOwnProperty(data.tipo)) {
-                            filtrosTipo[data.tipo] = true; // Ativa todos por defeito
+                            // Se o filtro não existir, cria-o como 'true' (ativo)
+                            filtrosTipo[data.tipo] = filtrosTipo[data.tipo] === undefined ? true : filtrosTipo[data.tipo];
                         }
                     });
 
