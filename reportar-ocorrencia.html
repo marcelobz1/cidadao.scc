@@ -78,6 +78,10 @@
         </main>
     </div>
 
+    <!-- SCRIPT DO GOOGLE MAPS (para Geocoding) -->
+    <!-- Carrega a API do Google Maps com a TUA CHAVE. 'defer' ajuda a carregar -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOOXahjFFUioJ0V7aRAhR6h8cOdyYs-oc" defer></script>
+
     <!-- SDKs do Firebase (Módulos v9) -->
     <script type="module">
         // Importa as funções necessárias
@@ -102,6 +106,7 @@
         // --- Elementos do DOM ---
         const form = document.getElementById('ocorrencia-form');
         const submitBtn = document.getElementById('submit-btn');
+        // ... (restante dos elementos)
         const btnText = document.getElementById('btn-text');
         const btnSpinner = document.getElementById('btn-spinner');
         const feedbackMsg = document.getElementById('feedback-msg');
@@ -110,26 +115,26 @@
         const statusGeoloc = document.getElementById('status-geoloc');
         const inputDescricao = document.getElementById('descricao');
         
+        // --- Variáveis de estado ---
         let dadosLatitude = null;
         let dadosLongitude = null;
+        let dadosEnderecoFormatado = null; // <-- NOVO: Para guardar o endereço
+        let geolocPronta = false;
+        let tipoSelecionado = false;
+        const userIdAnonimo = getOrCreateUserId();
+
 
         // --- NOVO: LÓGICA DO ID ANÓNIMO ---
         function getOrCreateUserId() {
             let userId = localStorage.getItem('radarCidadaoUserId');
             if (!userId) {
-                // crypto.randomUUID() é um gerador de ID seguro e moderno
                 userId = crypto.randomUUID(); 
                 localStorage.setItem('radarCidadaoUserId', userId);
             }
             return userId;
         }
-        // Obtém o ID assim que o script carrega
-        const userIdAnonimo = getOrCreateUserId();
-        // --- FIM DA NOVA LÓGICA ---
-
 
         // --- 1. Lógica dos Botões de Tipo ---
-        let tipoSelecionado = false;
         tipoBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 tipoBtns.forEach(b => {
@@ -138,21 +143,15 @@
                 });
                 btn.classList.add('scc-border-green', 'ring-2', 'ring-offset-2');
                 btn.classList.remove('border-gray-300');
-                
                 tipoInput.value = btn.dataset.valor;
                 tipoSelecionado = true;
                 verificarProntidao();
             });
         });
 
-        // --- 2. Obter Geolocalização E GEOFENCING ---
-        let geolocPronta = false;
-        // Caixa delimitadora de Santa Cruz do Capibaribe
+        // --- 2. Obter Geolocalização, GEOFENCING e GEOCODING ---
         const sccBounds = {
-            norte: -7.92,
-            sul: -7.99,
-            leste: -36.17,
-            oeste: -36.23
+            norte: -7.92, sul: -7.99, leste: -36.17, oeste: -36.23
         };
 
         if ('geolocation' in navigator) {
@@ -161,24 +160,52 @@
                     const lat = posicao.coords.latitude;
                     const lon = posicao.coords.longitude;
 
-                    // Verifica o Geofencing
+                    // 1. Verifica o Geofencing
                     if (lat < sccBounds.norte && lat > sccBounds.sul && lon < sccBounds.leste && lon > sccBounds.oeste) {
                         // SUCESSO: Dentro da área
                         dadosLatitude = lat;
                         dadosLongitude = lon;
-                        statusGeoloc.innerHTML = `<i class="fas fa-check-circle text-green-600 mr-2"></i> Localização obtida com sucesso!`;
-                        statusGeoloc.classList.add('bg-green-50', 'text-green-700');
-                        geolocPronta = true;
+                        statusGeoloc.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Localização obtida. A obter endereço...`;
+                        
+                        // --- NOVO: Chama o Geocoder ---
+                        try {
+                            const geocoder = new google.maps.Geocoder();
+                            geocoder.geocode({ location: { lat: lat, lng: lon } }, (results, status) => {
+                                if (status === "OK" && results[0]) {
+                                    // SUCESSO: Endereço encontrado
+                                    dadosEnderecoFormatado = results[0].formatted_address;
+                                    statusGeoloc.innerHTML = `<i class="fas fa-check-circle text-green-600 mr-2"></i> ${dadosEnderecoFormatado}`;
+                                    statusGeoloc.classList.add('bg-green-50', 'text-green-700');
+                                    geolocPronta = true;
+                                } else {
+                                    // FALHA: Geocoder falhou, mas o GPS funcionou
+                                    console.warn("Geocoder falhou: " + status);
+                                    statusGeoloc.innerHTML = `<i class="fas fa-check-circle text-green-600 mr-2"></i> Localização obtida (sem endereço).`;
+                                    statusGeoloc.classList.add('bg-green-50', 'text-green-700');
+                                    geolocPronta = true; // Ainda permite o envio
+                                }
+                                verificarProntidao();
+                            });
+                        } catch (e) {
+                             // FALHA: API do Google Maps provavelmente não carregou
+                            console.error("Erro ao carregar Google Maps Geocoder: ", e);
+                            statusGeoloc.innerHTML = `<i class="fas fa-check-circle text-green-600 mr-2"></i> Localização obtida (erro no Geocoder).`;
+                            statusGeoloc.classList.add('bg-green-50', 'text-green-700');
+                            geolocPronta = true; // Permite o envio
+                            verificarProntidao();
+                        }
+                        // --- FIM DO NOVO BLOCO ---
+
                     } else {
                         // ERRO: Fora da área
                         statusGeoloc.innerHTML = `<i class="fas fa-exclamation-triangle text-red-600 mr-2"></i> Fora da zona de serviço. Esta aplicação é apenas para Santa Cruz do Capibaribe.`;
                         statusGeoloc.classList.add('bg-red-50', 'text-red-700');
                         geolocPronta = false;
+                        verificarProntidao();
                     }
-                    verificarProntidao();
                 },
                 (erro) => {
-                    // ERRO: Permissão negada ou falha
+                    // ERRO: Permissão negada ou falha de GPS
                     console.error("Erro de Geolocalização: ", erro);
                     let msg = "Erro ao obter localização.";
                     if (erro.code === erro.PERMISSION_DENIED) { msg = "Geolocalização foi negada. Por favor, ative nas permissões."; }
@@ -189,6 +216,7 @@
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         } else {
+            // ERRO: Navegador não suporta GPS
             statusGeoloc.innerHTML = `<i class="fas fa-times-circle text-red-600 mr-2"></i> Geolocalização não é suportada.`;
             statusGeoloc.classList.add('bg-red-50', 'text-red-700');
             geolocPronta = false;
@@ -203,7 +231,7 @@
             }
         }
 
-        // --- 4. Envio do Formulário (AGORA COM O ID ANÓNIMO) ---
+        // --- 4. Envio do Formulário (COM O ENDEREÇO) ---
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!tipoSelecionado || !geolocPronta) return;
@@ -221,15 +249,15 @@
                     longitude: dadosLongitude,
                     descricao: inputDescricao.value,
                     status: "Pendente",
-                    timestamp: serverTimestamp(), // Pega a hora do servidor Firebase
-                    userId_anonimo: userIdAnonimo // <-- NOVO CAMPO ADICIONADO
+                    timestamp: serverTimestamp(), 
+                    userId_anonimo: userIdAnonimo,
+                    endereco_formatado: dadosEnderecoFormatado || null // <-- NOVO CAMPO
                 };
 
                 // Envia para a coleção "ocorrencias" no Firestore
                 const docRef = await addDoc(collection(db, "ocorrencias"), ocorrencia);
                 
                 // Sucesso!
-                console.log("Documento escrito com ID: ", docRef.id);
                 mostrarFeedback('success', 'Ocorrência registada com sucesso!');
                 form.reset(); 
                 tipoBtns.forEach(b => {
@@ -240,7 +268,6 @@
                 verificarProntidao(); 
 
             } catch (error) {
-                // Erro (provavelmente das "Regras" do Firestore)
                 console.error("Erro ao adicionar documento: ", error);
                 mostrarFeedback('error', 'Erro ao enviar. Verifique as regras do Firebase.');
                 submitBtn.disabled = false;
