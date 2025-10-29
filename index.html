@@ -209,14 +209,18 @@
                         icon: iconUrl,
                         animation: google.maps.Animation.DROP 
                     });
+                    
+                    // --- NOVO: Adicionado 'item.endereco_formatado' ---
                     const infoConteudo = `
                         <div style="font-family: Inter, sans-serif; padding: 5px;">
                             <strong style="color: ${corAzulSCC};">${item.tipo || 'N/D'}</strong><br>
                             <strong>Status:</strong> ${item.status || 'N/D'}<br>
+                            <strong>Endereço:</strong> ${item.endereco_formatado || 'N/D'}<br>
                             <strong>Data:</strong> ${item.timestamp ? item.timestamp.toDate().toLocaleDateString('pt-BR') : 'N/D'}<br>
                             <strong>Descrição:</strong> ${item.descricao || 'N/D'}
                         </div>
                     `;
+                    
                     marcador.addListener('click', () => {
                         infoWindow.setContent(infoConteudo);
                         infoWindow.open(mapa, marcador);
@@ -340,10 +344,7 @@
             mapa = new google.maps.Map(document.getElementById('mapa'), {
                 center: sccCoords,
                 zoom: 14,
-                // #############################################
-                // ### O TEU AJUSTE FINAL ESTÁ AQUI ###
-                // #############################################
-                mapTypeId: 'hybrid', // Define o modo HÍBRIDO (Satélite + Nomes de Ruas)
+                mapTypeId: 'hybrid', // MODO HÍBRIDO (Satélite + Ruas)
                 mapId: "RADAR_CIDADAO_SCC_STYLE" 
             });
         }
