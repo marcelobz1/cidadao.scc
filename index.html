@@ -7,6 +7,8 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- REMOVIDO: Leaflet CSS -->
+    
     <!-- Chart.js (para os gráficos) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Font Awesome (Ícones) -->
@@ -15,11 +17,15 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <style>
         body { font-family: 'Inter', sans-serif; }
+        /* ALTERADO: Estilo para Google Maps */
         #mapa { 
             height: 500px; 
             border-radius: 0.5rem; 
             background-color: #f3f4f6; 
         }
+        
+        /* REMOVIDO: Classes .pin- (não são necessárias para o Google Maps) */
+        
         .scc-bg-blue { background-color: #312e81; }
         .scc-bg-green { background-color: #15803d; }
         .scc-text-blue { color: #312e81; }
@@ -30,9 +36,9 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
 
+    <!-- O teu HTML (header, métricas, divs) está perfeito, não muda -->
     <div class="max-w-7xl mx-auto p-4 md:p-8">
         
-        <!-- Cabeçalho -->
         <header class="scc-bg-blue p-6 rounded-lg shadow-lg mb-8">
             <div class="flex items-center justify-between">
                 <div>
@@ -46,15 +52,13 @@
             </div>
         </header>
 
-        <!-- Feedback -->
         <div id="feedback-msg" class="mb-6 p-4 rounded-lg text-center font-medium bg-blue-100 text-blue-700 animate-pulse">
             <i class="fas fa-spinner fa-spin mr-2"></i>
             A ligar à base de dados...
         </div>
 
-        <!-- Métricas -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Total de Ocorrências</span>
                     <p id="total-metric" class="text-3xl font-bold scc-text-blue">...</p>
@@ -77,7 +81,6 @@
             </div>
         </div>
 
-        <!-- Mapa e Gráficos -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-2xl font-semibold mb-4 scc-text-blue">Mapa de Ocorrências</h2>
@@ -96,6 +99,7 @@
         </div>
     </div>
 
+    <!-- REMOVIDO: Leaflet JS -->
     
     <!-- SDKs do Firebase (Módulos v9) -->
     <script type="module">
@@ -120,17 +124,22 @@
 
         // --- Elementos do DOM ---
         let feedbackMsg, totalMetric, pendenteMetric, resolvidoMetric;
+        
+        // --- ALTERADO: Variáveis do Mapa (Google Maps) ---
+        let mapa = null;
+        let googleMarkers = []; // Array para guardar os marcadores
+        let infoWindow = null; // Janela de informação (popup)
+        
         let graficoStatus = null;
         let graficoTipos = null;
 
-        // --- Variáveis do Mapa (Google Maps) ---
-        let mapa = null; 
-        let googleMarkers = []; 
-        let infoWindow = null; 
-
-        // --- Variáveis de Lógica ---
-        let todosOsDados = [];
-        let filtrosStatus = { "Pendente": true, "Em Andamento": true, "Resolvido": true };
+        // --- Variáveis Globais (do teu código funcional) ---
+        let todosOsDados = []; 
+        let filtrosStatus = { 
+            'Pendente': true,
+            'Em Andamento': true,
+            'Resolvido': true
+        };
 
         // Cores
         const corAzulSCC = '#312e81';
@@ -138,7 +147,7 @@
         const corAmarelaSCC = '#f59e0b';
         const corVermelhaStatus = '#dc2626';
 
-        // URLs dos Ícones do Google Maps
+        // --- ALTERADO: URLs dos Ícones do Google Maps ---
         const iconUrlBase = "http://maps.google.com/mapfiles/ms/icons/";
         const icons = {
             "Pendente": iconUrlBase + "red-dot.png",
@@ -146,7 +155,8 @@
             "Resolvido": iconUrlBase + "green-dot.png"
         };
 
-        // --- 1. Função de Feedback ---
+
+        // --- 1. Função de Feedback (do teu código) ---
         function mostrarFeedback(tipo, mensagem) {
             if (!feedbackMsg) feedbackMsg = document.getElementById('feedback-msg');
             feedbackMsg.classList.remove('hidden', 'bg-blue-100', 'text-blue-700', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'animate-pulse');
@@ -161,40 +171,46 @@
             feedbackMsg.classList.remove('hidden');
         }
 
-        // --- 2. Processar e Exibir Dados ---
-        function processarDados(dadosFiltrados) {
+        
+        // --- 2. Função Centralizada de Atualização (do teu código) ---
+        function aplicarFiltrosEAtualizarDashboard() {
             
-            // Limpa Marcadores Antigos (Google Maps)
-            googleMarkers.forEach(marker => {
-                marker.setMap(null); 
+            // 1. Aplicar SÓ o filtro de status
+            const dadosFiltrados = todosOsDados.filter(item => {
+                const status = item.status || 'Pendente'; 
+                return filtrosStatus[status]; 
             });
-            googleMarkers = []; 
+
+            // 2. Atualizar o Mapa (com a nova função Google Maps)
+            atualizarMapaPins(dadosFiltrados);
+
+            // 3. Atualizar as Métricas
+            atualizarMetricas(dadosFiltrados);
             
-            let total = dadosFiltrados.length;
-            let pendentes = 0;
-            let resolvidos = 0;
-            let emAndamento = 0; 
-            let tipos = {};
+            // 4. Atualizar o Gráfico de Tipos
+            atualizarGraficoTipos(dadosFiltrados);
+        }
+
+        // --- 3. Funções de Atualização Específicas ---
+
+        // --- ALTERADA: Esta função agora usa Google Maps ---
+        function atualizarMapaPins(dados) {
+            if (!mapa) inicializarMapa(); 
             
+            // Limpa marcadores antigos
+            googleMarkers.forEach(marker => marker.setMap(null));
+            googleMarkers = [];
+
             if (!infoWindow) {
                 infoWindow = new google.maps.InfoWindow();
             }
 
-            dadosFiltrados.forEach(item => {
-                // Contagem de Status
-                if (item.status === 'Resolvido') { resolvidos++; }
-                else if (item.status === 'Em Andamento') { emAndamento++; }
-                else { pendentes++; }
-                
-                // Contagem de Tipos
-                if (item.tipo) { tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; }
-
-                // Adicionar Pinos (Google Maps)
+            dados.forEach(item => {
                 try {
                     const lat = parseFloat(item.latitude);
                     const lon = parseFloat(item.longitude);
                     if (isNaN(lat) || isNaN(lon)) return; 
-                    
+
                     const iconUrl = icons[item.status] || icons["Pendente"];
 
                     const marcador = new google.maps.Marker({
@@ -203,8 +219,7 @@
                         icon: iconUrl,
                         animation: google.maps.Animation.DROP 
                     });
-
-                    // Conteúdo do Popup (InfoWindow)
+                    
                     const infoConteudo = `
                         <div style="font-family: Inter, sans-serif; padding: 5px;">
                             <strong style="color: ${corAzulSCC};">${item.tipo || 'N/D'}</strong><br>
@@ -222,13 +237,40 @@
                     googleMarkers.push(marcador);
                 } catch(e) { console.warn("Erro ao adicionar pino:", e); }
             });
+        }
 
-            // --- 3. Atualizar Métricas e Gráficos ---
+        // --- Esta função é do teu código funcional ---
+        function atualizarMetricas(dados) {
+            let total = dados.length;
+            let pendentes = 0;
+            let resolvidos = 0;
+            let emAndamento = 0; 
+            
+            dados.forEach(item => {
+                if (item.status === 'Resolvido') { resolvidos++; }
+                else if (item.status === 'Em Andamento') { emAndamento++; }
+                else { pendentes++; }
+            });
+
             totalMetric.textContent = total;
             pendenteMetric.textContent = pendentes;
             resolvidoMetric.textContent = resolvidos;
+        }
 
-            // Gráfico de Status
+        // --- 4. Funções de Criação dos Gráficos ---
+
+        // --- Esta é a tua função CORRETA do filtro de "Status Geral" ---
+        function criarGraficoStatus(dados) {
+            let pendentes = 0;
+            let resolvidos = 0;
+            let emAndamento = 0; 
+            
+            dados.forEach(item => {
+                if (item.status === 'Resolvido') { resolvidos++; }
+                else if (item.status === 'Em Andamento') { emAndamento++; }
+                else { pendentes++; }
+            });
+
             const ctxStatus = document.getElementById('grafico-status').getContext('2d');
             if (graficoStatus) graficoStatus.destroy(); 
             graficoStatus = new Chart(ctxStatus, {
@@ -246,7 +288,7 @@
                     responsive: true, 
                     maintainAspectRatio: true,
                     // ###############################################################
-                    // ### AQUI ESTÁ A LÓGICA DE FILTRO CORRETA (A QUE FUNCIONAVA) ###
+                    // ### A TUA LÓGICA DE FILTRO (QUE FUNCIONA COM O "TRACEJADO") ###
                     // ###############################################################
                     plugins: {
                         legend: {
@@ -270,8 +312,23 @@
                     }
                 }
             });
+        }
 
-            // Gráfico de Tipos
+        // --- Esta função é do teu código funcional ---
+        function criarGraficoTipos(dados) {
+            let tipos = {};
+            const coresBase = [corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus, '#6366f1', '#ec4899'];
+            
+            dados.forEach((item, index) => {
+                if (item.tipo) { 
+                    tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; 
+                }
+            });
+
+            const backgroundColors = Object.keys(tipos).map((tipo, index) => {
+                return coresBase[index % coresBase.length];
+            });
+
             const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
             if (graficoTipos) graficoTipos.destroy(); 
             graficoTipos = new Chart(ctxTipos, {
@@ -281,36 +338,48 @@
                     datasets: [{
                         label: 'Nº de Ocorrências',
                         data: Object.values(tipos),
-                        backgroundColor: [ corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus ],
+                        backgroundColor: backgroundColors,
                     }]
                 },
                 options: {
                     responsive: true, maintainAspectRatio: true, indexAxis: 'y',
-                    plugins: { legend: { display: false } }, // Esconde a legenda
                     scales: { 
                         y: { beginAtZero: true },
-                        x: { ticks: { stepSize: (total > 0) ? 1 : undefined } } 
+                        x: { ticks: { stepSize: (dados.length > 0 && dados.length < 10) ? 1 : undefined } } 
+                    },
+                    plugins: {
+                        legend: { display: false } // A tua regra de esconder a legenda
                     }
                 }
             });
         }
         
-        // --- 4. Aplicar Filtros ---
-        function aplicarFiltrosEAtualizarDashboard() {
-            // Primeiro, filtra os dados com base nos filtros de Status
-            const dadosFiltrados = todosOsDados.filter(item => {
-                return filtrosStatus[item.status]; // Só inclui se o status for 'true' no filtro
+        // --- Esta função é do teu código funcional ---
+        function atualizarGraficoTipos(dadosFiltrados) {
+            if (!graficoTipos) return; 
+            
+            let tipos = {};
+            dadosFiltrados.forEach(item => {
+                if (item.tipo) { 
+                    tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; 
+                }
             });
             
-            // AGORA, redesenha tudo com os dados filtrados
-            processarDados(dadosFiltrados); 
+            graficoTipos.data.labels = Object.keys(tipos);
+            graficoTipos.data.datasets[0].data = Object.values(tipos);
+            
+            const coresBase = [corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus, '#6366f1', '#ec4899'];
+            graficoTipos.data.datasets[0].backgroundColor = graficoTipos.data.labels.map((tipo, index) => {
+                return coresBase[index % coresBase.length];
+            });
+            
+            graficoTipos.update();
         }
 
-
-        // --- 5. Inicializar Mapa (Google Maps) ---
+        // --- 5. Inicializar Mapa (ALTERADO para Google Maps) ---
         function inicializarMapa() {
             if (mapa) return; 
-            const sccCoords = { lat: -7.954, lng: -36.204 }; 
+            const sccCoords = { lat: -7.954, lng: -36.204 }; // Coordenadas de Santa Cruz do Capibaribe
             mapa = new google.maps.Map(document.getElementById('mapa'), {
                 center: sccCoords,
                 zoom: 14,
@@ -318,24 +387,40 @@
             });
         }
 
-        // --- 6. Ligar ao Firebase ---
-        function conectarAoFirestore() {
+        // --- 6. LIGAR AO FIREBASE (ALTERADO para usar initMap) ---
+        // Esta função é o PONTO DE ENTRADA, chamada pelo script do Google Maps
+        function initMap() {
+            // Agora temos a certeza que os elementos existem
+            feedbackMsg = document.getElementById('feedback-msg');
+            totalMetric = document.getElementById('total-metric');
+            pendenteMetric = document.getElementById('pendente-metric');
+            resolvidoMetric = document.getElementById('resolvido-metric');
+            
             try {
+                inicializarMapa(); // Inicializa o mapa
+                
                 const q = query(collection(db, "ocorrencias"));
                 
+                // 'onSnapshot' é o "ouvinte" em tempo real
                 onSnapshot(q, (snapshot) => {
+                    // 1. Atualiza a nossa base de dados global
                     todosOsDados = []; 
                     snapshot.forEach((doc) => {
                         todosOsDados.push(doc.data()); 
                     });
 
-                    // Aplica os filtros atuais aos dados que acabaram de chegar
-                    aplicarFiltrosEAtualizarDashboard();
+                    // 2. Cria os gráficos pela primeira vez com os dados TOTAIS
+                    criarGraficoStatus(todosOsDados);
+                    criarGraficoTipos(todosOsDados);
 
+                    // 3. Aplica os filtros (default) e atualiza o resto
+                    aplicarFiltrosEAtualizarDashboard(); 
+
+                    // Mostra feedback de sucesso
                     if (todosOsDados.length === 0) {
                         mostrarFeedback('info', 'Nenhuma ocorrência encontrada.');
                     } else {
-                        feedbackMsg.classList.add('hidden'); 
+                        feedbackMsg.classList.add('hidden'); // Esconde o feedback
                     }
 
                 }, (error) => {
@@ -347,25 +432,13 @@
                 console.error("Erro geral:", e);
                 mostrarFeedback('error', 'Ocorreu um erro ao carregar a aplicação.');
             }
-        }
-        
-        // --- 7. PONTO DE ENTRADA (Callback do Google Maps) ---
-        function initMap() {
-            // Garante que os elementos existem
-            feedbackMsg = document.getElementById('feedback-msg');
-            totalMetric = document.getElementById('total-metric');
-            pendenteMetric = document.getElementById('pendente-metric');
-            resolvidoMetric = document.getElementById('resolvido-metric');
-            
-            inicializarMapa(); // Inicializa o Google Map
-            conectarAoFirestore(); // Liga-se ao Firebase
-        }
+        };
         
         // Torna a função initMap acessível globalmente
         window.initMap = initMap;
 
     </script>
-
+    
     <!--
     SCRIPT DO GOOGLE MAPS (com a tua Chave de API)
     -->
