@@ -131,7 +131,7 @@
         // --- Variáveis de Lógica ---
         let todosOsDados = [];
         let filtrosStatus = { "Pendente": true, "Em Andamento": true, "Resolvido": true };
-        let filtrosTipo = {}; // Será preenchido dinamicamente
+        let filtrosTipo = {}; 
 
         // Cores
         const corAzulSCC = '#312e81';
@@ -166,7 +166,6 @@
         // --- 2. Função Centralizada de Atualização ---
         function aplicarFiltrosEAtualizarDashboard() {
             
-            // Filtra por AMBOS os filtros (para o Mapa e Métricas)
             const dadosFiltradosFinal = todosOsDados.filter(item => {
                 const status = item.status || 'Pendente';
                 const tipo = item.tipo;
@@ -174,12 +173,9 @@
                 return filtrosStatus[status] && filtrosTipo[tipo];
             });
 
-            // 1. Atualiza Mapa (com ambos os filtros)
             atualizarMapaPins(dadosFiltradosFinal);
-            // 2. Atualiza Métricas (com ambos os filtros)
             atualizarMetricas(dadosFiltradosFinal);
             
-            // 3. Atualiza Gráfico de Status (só com o filtro de Tipo aplicado)
             const dadosFiltradosPorTipo = todosOsDados.filter(item => {
                 const tipo = item.tipo;
                 if (tipo && filtrosTipo[tipo] === undefined) { filtrosTipo[tipo] = true; }
@@ -187,7 +183,6 @@
             });
             atualizarGraficoStatus(dadosFiltradosPorTipo);
             
-            // 4. Atualiza Gráfico de Tipos (só com o filtro de Status aplicado)
             const dadosFiltradosPorStatus = todosOsDados.filter(item => {
                 return filtrosStatus[item.status || 'Pendente']; 
             });
@@ -196,7 +191,6 @@
 
         // --- 3. Funções de Atualização Específicas ---
 
-        // Atualiza Mapa (Google Maps)
         function atualizarMapaPins(dados) {
             if (!mapa) inicializarMapa(); 
             googleMarkers.forEach(marker => marker.setMap(null));
@@ -232,7 +226,6 @@
             });
         }
 
-        // Atualiza Métricas
         function atualizarMetricas(dados) {
             let total = dados.length;
             let pendentes = 0, resolvidos = 0, emAndamento = 0; 
@@ -248,7 +241,6 @@
 
         // --- 4. Funções de Criação/Atualização dos Gráficos ---
 
-        // Atualiza Gráfico de Status (Doughnut)
         function atualizarGraficoStatus(dados) {
             let pendentes = 0, resolvidos = 0, emAndamento = 0; 
             dados.forEach(item => {
@@ -258,11 +250,9 @@
             });
 
             if (graficoStatus) {
-                // Se o gráfico já existe, apenas atualiza os dados
                 graficoStatus.data.datasets[0].data = [pendentes, emAndamento, resolvidos];
                 graficoStatus.update();
             } else {
-                // Se não existe, cria-o
                 const ctxStatus = document.getElementById('grafico-status').getContext('2d');
                 graficoStatus = new Chart(ctxStatus, {
                     type: 'doughnut',
@@ -295,7 +285,6 @@
             }
         }
 
-        // ATUALIZADO: Atualiza Gráfico de Tipos (Bar)
         function atualizarGraficoTipos(dados) {
             let tipos = {};
             dados.forEach(item => {
@@ -304,55 +293,44 @@
 
             const coresBase = [corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus, '#6366f1', '#ec4899'];
             
-            // Transforma os tipos em datasets (Múltiplos datasets)
             const datasets = Object.keys(tipos).map((tipo, index) => {
                 return {
-                    label: tipo, // O nome clicável na legenda
-                    data: [tipos[tipo]], // Um array com um só valor
+                    label: tipo, 
+                    data: [tipos[tipo]], 
                     backgroundColor: coresBase[index % coresBase.length],
-                    
-                    // #############################################
-                    // ### A CORREÇÃO ESTÁ AQUI ###
-                    // #############################################
-                    // Diz ao Chart.js se este item deve estar "escondido" (e tracejado)
-                    // com base no nosso objeto de filtro 'filtrosTipo'
+                    // A LÓGICA DE FILTRO CORRIGIDA (que falhou da última vez)
                     hidden: !filtrosTipo[tipo] 
                 };
             });
 
             if (graficoTipos) {
-                // Se o gráfico já existe, atualiza os datasets
                 graficoTipos.data.datasets = datasets;
                 graficoTipos.update();
             } else {
-                // Se não existe, cria-o
                 const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
                 graficoTipos = new Chart(ctxTipos, {
-                    type: 'bar', // Gráfico de barras vertical
+                    type: 'bar', 
                     data: {
-                        labels: ['Tipos'], // Um rótulo genérico (e escondido) no eixo X
-                        datasets: datasets // Múltiplos datasets
+                        labels: ['Tipos'], 
+                        datasets: datasets 
                     },
                     options: {
                         responsive: true,
                         plugins: {
-                            // ### AQUI ESTÁ A LÓGICA DE FILTRO CORRIGIDA ###
+                            // A LÓGICA DE FILTRO CORRIGIDA (que falhou da última vez)
                             legend: {
-                                display: true, // Garante que a legenda está visível
+                                display: true, 
                                 onClick: (e, legendItem, legend) => {
                                     // 1. Atualiza o nosso objeto de filtro
                                     filtrosTipo[legendItem.text] = !filtrosTipo[legendItem.text]; 
-                                    
                                     // 2. Manda o dashboard inteiro atualizar-se
-                                    // A função 'atualizarGraficoTipos' vai ler o novo estado
-                                    // e aplicar o 'hidden: true' (tracejado)
                                     aplicarFiltrosEAtualizarDashboard();
                                 }
                             }
                         },
                         scales: { 
                             y: { beginAtZero: true },
-                            x: { ticks: { display: false } } // Esconde o label "Tipos" no eixo x
+                            x: { ticks: { display: false } } 
                         }
                     }
                 });
@@ -366,36 +344,38 @@
             mapa = new google.maps.Map(document.getElementById('mapa'), {
                 center: sccCoords,
                 zoom: 14,
+                // #############################################
+                // ### O TEU AJUSTE FINAL ESTÁ AQUI ###
+                // #############################################
+                mapTypeId: 'satellite', // Define o modo satélite como padrão
                 mapId: "RADAR_CIDADAO_SCC_STYLE" 
             });
         }
 
         // --- 6. LIGAR AO FIREBASE (Ponto de Entrada) ---
         function initMap() {
-            // Garante que os elementos existem
             feedbackMsg = document.getElementById('feedback-msg');
             totalMetric = document.getElementById('total-metric');
             pendenteMetric = document.getElementById('pendente-metric');
             resolvidoMetric = document.getElementById('resolvido-metric');
             
             try {
-                inicializarMapa(); // Inicializa o mapa
+                inicializarMapa(); 
                 const q = query(collection(db, "ocorrencias"));
                 
                 onSnapshot(q, (snapshot) => {
                     todosOsDados = []; 
-                    filtrosTipo = {}; // Limpa e repopula os filtros de tipo
+                    let tiposExistentes = Object.keys(filtrosTipo);
                     
                     snapshot.forEach((doc) => {
                         const data = doc.data();
                         todosOsDados.push(data); 
-                        if (data.tipo && !filtrosTipo.hasOwnProperty(data.tipo)) {
-                            // Se o filtro não existir, cria-o como 'true' (ativo)
-                            filtrosTipo[data.tipo] = filtrosTipo[data.tipo] === undefined ? true : filtrosTipo[data.tipo];
+                        // SÓ adiciona tipos novos ao filtro
+                        if (data.tipo && !tiposExistentes.includes(data.tipo)) {
+                            filtrosTipo[data.tipo] = true; 
                         }
                     });
 
-                    // Aplica os filtros (default) e atualiza TUDO
                     aplicarFiltrosEAtualizarDashboard(); 
 
                     if (todosOsDados.length === 0) {
