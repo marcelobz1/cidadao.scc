@@ -298,7 +298,6 @@
                     label: tipo, 
                     data: [tipos[tipo]], 
                     backgroundColor: coresBase[index % coresBase.length],
-                    // A LÓGICA DE FILTRO CORRIGIDA (que falhou da última vez)
                     hidden: !filtrosTipo[tipo] 
                 };
             });
@@ -317,13 +316,10 @@
                     options: {
                         responsive: true,
                         plugins: {
-                            // A LÓGICA DE FILTRO CORRIGIDA (que falhou da última vez)
                             legend: {
                                 display: true, 
                                 onClick: (e, legendItem, legend) => {
-                                    // 1. Atualiza o nosso objeto de filtro
                                     filtrosTipo[legendItem.text] = !filtrosTipo[legendItem.text]; 
-                                    // 2. Manda o dashboard inteiro atualizar-se
                                     aplicarFiltrosEAtualizarDashboard();
                                 }
                             }
@@ -347,7 +343,7 @@
                 // #############################################
                 // ### O TEU AJUSTE FINAL ESTÁ AQUI ###
                 // #############################################
-                mapTypeId: 'satellite', // Define o modo satélite como padrão
+                mapTypeId: 'hybrid', // Define o modo HÍBRIDO (Satélite + Nomes de Ruas)
                 mapId: "RADAR_CIDADAO_SCC_STYLE" 
             });
         }
@@ -370,7 +366,6 @@
                     snapshot.forEach((doc) => {
                         const data = doc.data();
                         todosOsDados.push(data); 
-                        // SÓ adiciona tipos novos ao filtro
                         if (data.tipo && !tiposExistentes.includes(data.tipo)) {
                             filtrosTipo[data.tipo] = true; 
                         }
