@@ -7,8 +7,6 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- REMOVIDO: Leaflet CSS -->
-    
     <!-- Chart.js (para os gráficos) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Font Awesome (Ícones) -->
@@ -17,15 +15,11 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        /* ALTERADO: Estilo para Google Maps */
         #mapa { 
             height: 500px; 
             border-radius: 0.5rem; 
             background-color: #f3f4f6; 
         }
-        
-        /* REMOVIDO: Classes .pin- (não são necessárias para o Google Maps) */
-        
         .scc-bg-blue { background-color: #312e81; }
         .scc-bg-green { background-color: #15803d; }
         .scc-text-blue { color: #312e81; }
@@ -36,9 +30,9 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
 
-    <!-- O teu HTML (header, métricas, divs) está perfeito, não muda -->
     <div class="max-w-7xl mx-auto p-4 md:p-8">
         
+        <!-- Cabeçalho (igual) -->
         <header class="scc-bg-blue p-6 rounded-lg shadow-lg mb-8">
             <div class="flex items-center justify-between">
                 <div>
@@ -52,13 +46,15 @@
             </div>
         </header>
 
+        <!-- Feedback (igual) -->
         <div id="feedback-msg" class="mb-6 p-4 rounded-lg text-center font-medium bg-blue-100 text-blue-700 animate-pulse">
             <i class="fas fa-spinner fa-spin mr-2"></i>
             A ligar à base de dados...
         </div>
 
+        <!-- Métricas (igual) -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
+             <div class="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Total de Ocorrências</span>
                     <p id="total-metric" class="text-3xl font-bold scc-text-blue">...</p>
@@ -81,6 +77,7 @@
             </div>
         </div>
 
+        <!-- Mapa e Gráficos (igual) -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-2xl font-semibold mb-4 scc-text-blue">Mapa de Ocorrências</h2>
@@ -99,7 +96,6 @@
         </div>
     </div>
 
-    <!-- REMOVIDO: Leaflet JS -->
     
     <!-- SDKs do Firebase (Módulos v9) -->
     <script type="module">
@@ -124,22 +120,19 @@
 
         // --- Elementos do DOM ---
         let feedbackMsg, totalMetric, pendenteMetric, resolvidoMetric;
-        
-        // --- ALTERADO: Variáveis do Mapa (Google Maps) ---
-        let mapa = null;
-        let googleMarkers = []; // Array para guardar os marcadores
-        let infoWindow = null; // Janela de informação (popup)
-        
         let graficoStatus = null;
         let graficoTipos = null;
 
-        // --- Variáveis Globais (do teu código funcional) ---
-        let todosOsDados = []; 
-        let filtrosStatus = { 
-            'Pendente': true,
-            'Em Andamento': true,
-            'Resolvido': true
-        };
+        // --- Variáveis do Mapa (Google Maps) ---
+        let mapa = null; 
+        let googleMarkers = []; 
+        let infoWindow = null; 
+
+        // --- Variáveis de Lógica ---
+        let todosOsDados = [];
+        // NOSSOS DOIS OBJETOS DE FILTRO
+        let filtrosStatus = { "Pendente": true, "Em Andamento": true, "Resolvido": true };
+        let filtrosTipo = {}; // Será preenchido dinamicamente
 
         // Cores
         const corAzulSCC = '#312e81';
@@ -147,7 +140,7 @@
         const corAmarelaSCC = '#f59e0b';
         const corVermelhaStatus = '#dc2626';
 
-        // --- ALTERADO: URLs dos Ícones do Google Maps ---
+        // URLs dos Ícones do Google Maps
         const iconUrlBase = "http://maps.google.com/mapfiles/ms/icons/";
         const icons = {
             "Pendente": iconUrlBase + "red-dot.png",
@@ -155,8 +148,7 @@
             "Resolvido": iconUrlBase + "green-dot.png"
         };
 
-
-        // --- 1. Função de Feedback (do teu código) ---
+        // --- 1. Função de Feedback ---
         function mostrarFeedback(tipo, mensagem) {
             if (!feedbackMsg) feedbackMsg = document.getElementById('feedback-msg');
             feedbackMsg.classList.remove('hidden', 'bg-blue-100', 'text-blue-700', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'animate-pulse');
@@ -172,54 +164,63 @@
         }
 
         
-        // --- 2. Função Centralizada de Atualização (do teu código) ---
+        // --- 2. Função Centralizada de Atualização ---
         function aplicarFiltrosEAtualizarDashboard() {
             
-            // 1. Aplicar SÓ o filtro de status
-            const dadosFiltrados = todosOsDados.filter(item => {
-                const status = item.status || 'Pendente'; 
-                return filtrosStatus[status]; 
+            // Filtra por AMBOS os filtros (para o Mapa e Métricas)
+            const dadosFiltradosFinal = todosOsDados.filter(item => {
+                const status = item.status || 'Pendente';
+                const tipo = item.tipo;
+
+                // Se um tipo é novo, considera-o 'true' por defeito
+                if (tipo && filtrosTipo[tipo] === undefined) { 
+                    filtrosTipo[tipo] = true; 
+                }
+                
+                return filtrosStatus[status] && filtrosTipo[tipo];
             });
 
-            // 2. Atualizar o Mapa (com a nova função Google Maps)
-            atualizarMapaPins(dadosFiltrados);
-
-            // 3. Atualizar as Métricas
-            atualizarMetricas(dadosFiltrados);
+            // 1. Atualiza Mapa (com ambos os filtros)
+            atualizarMapaPins(dadosFiltradosFinal);
+            // 2. Atualiza Métricas (com ambos os filtros)
+            atualizarMetricas(dadosFiltradosFinal);
             
-            // 4. Atualizar o Gráfico de Tipos
-            atualizarGraficoTipos(dadosFiltrados);
+            // 3. Atualiza Gráfico de Status (só com o filtro de Tipo aplicado)
+            const dadosFiltradosPorTipo = todosOsDados.filter(item => {
+                const tipo = item.tipo;
+                if (tipo && filtrosTipo[tipo] === undefined) { filtrosTipo[tipo] = true; }
+                return filtrosTipo[tipo];
+            });
+            atualizarGraficoStatus(dadosFiltradosPorTipo);
+            
+            // 4. Atualiza Gráfico de Tipos (só com o filtro de Status aplicado)
+            const dadosFiltradosPorStatus = todosOsDados.filter(item => {
+                return filtrosStatus[item.status || 'Pendente']; 
+            });
+            atualizarGraficoTipos(dadosFiltradosPorStatus);
         }
 
         // --- 3. Funções de Atualização Específicas ---
 
-        // --- ALTERADA: Esta função agora usa Google Maps ---
+        // Atualiza Mapa (Google Maps)
         function atualizarMapaPins(dados) {
             if (!mapa) inicializarMapa(); 
-            
-            // Limpa marcadores antigos
             googleMarkers.forEach(marker => marker.setMap(null));
             googleMarkers = [];
-
-            if (!infoWindow) {
-                infoWindow = new google.maps.InfoWindow();
-            }
+            if (!infoWindow) infoWindow = new google.maps.InfoWindow();
 
             dados.forEach(item => {
                 try {
                     const lat = parseFloat(item.latitude);
                     const lon = parseFloat(item.longitude);
                     if (isNaN(lat) || isNaN(lon)) return; 
-
                     const iconUrl = icons[item.status] || icons["Pendente"];
-
                     const marcador = new google.maps.Marker({
                         position: { lat: lat, lng: lon },
                         map: mapa,
                         icon: iconUrl,
                         animation: google.maps.Animation.DROP 
                     });
-                    
                     const infoConteudo = `
                         <div style="font-family: Inter, sans-serif; padding: 5px;">
                             <strong style="color: ${corAzulSCC};">${item.tipo || 'N/D'}</strong><br>
@@ -228,158 +229,141 @@
                             <strong>Descrição:</strong> ${item.descricao || 'N/D'}
                         </div>
                     `;
-
                     marcador.addListener('click', () => {
                         infoWindow.setContent(infoConteudo);
                         infoWindow.open(mapa, marcador);
                     });
-                    
                     googleMarkers.push(marcador);
                 } catch(e) { console.warn("Erro ao adicionar pino:", e); }
             });
         }
 
-        // --- Esta função é do teu código funcional ---
+        // Atualiza Métricas
         function atualizarMetricas(dados) {
             let total = dados.length;
-            let pendentes = 0;
-            let resolvidos = 0;
-            let emAndamento = 0; 
-            
+            let pendentes = 0, resolvidos = 0, emAndamento = 0; 
             dados.forEach(item => {
                 if (item.status === 'Resolvido') { resolvidos++; }
                 else if (item.status === 'Em Andamento') { emAndamento++; }
                 else { pendentes++; }
             });
-
             totalMetric.textContent = total;
             pendenteMetric.textContent = pendentes;
             resolvidoMetric.textContent = resolvidos;
         }
 
-        // --- 4. Funções de Criação dos Gráficos ---
+        // --- 4. Funções de Criação/Atualização dos Gráficos ---
 
-        // --- Esta é a tua função CORRETA do filtro de "Status Geral" ---
-        function criarGraficoStatus(dados) {
-            let pendentes = 0;
-            let resolvidos = 0;
-            let emAndamento = 0; 
-            
+        // Atualiza Gráfico de Status (Doughnut)
+        function atualizarGraficoStatus(dados) {
+            let pendentes = 0, resolvidos = 0, emAndamento = 0; 
             dados.forEach(item => {
                 if (item.status === 'Resolvido') { resolvidos++; }
                 else if (item.status === 'Em Andamento') { emAndamento++; }
                 else { pendentes++; }
             });
 
-            const ctxStatus = document.getElementById('grafico-status').getContext('2d');
-            if (graficoStatus) graficoStatus.destroy(); 
-            graficoStatus = new Chart(ctxStatus, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Pendente', 'Em Andamento', 'Resolvido'],
-                    datasets: [{
-                        label: 'Status',
-                        data: [pendentes, emAndamento, resolvidos],
-                        backgroundColor: [corVermelhaStatus, corAmarelaSCC, corVerdeSCC],
-                        hoverOffset: 4
-                    }]
-                },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: true,
-                    // ###############################################################
-                    // ### A TUA LÓGICA DE FILTRO (QUE FUNCIONA COM O "TRACEJADO") ###
-                    // ###############################################################
-                    plugins: {
-                        legend: {
-                            onClick: (e, legendItem, legend) => {
-                                // 1. Inverte manualmente o estado 'hidden'
-                                legendItem.hidden = !legendItem.hidden;
-
-                                // 2. Atualiza o nosso objeto de filtro
-                                filtrosStatus[legendItem.text] = !legendItem.hidden; 
-                                
-                                // 3. Esconde/mostra a fatia de dados no gráfico
-                                legend.chart.toggleDataVisibility(legendItem.index);
-                                
-                                // 4. Força o gráfico a atualizar (isto aplica o "tracejado")
-                                legend.chart.update();
-
-                                // 5. MANDA ATUALIZAR O RESTO DO DASHBOARD
-                                aplicarFiltrosEAtualizarDashboard();
+            if (graficoStatus) {
+                // Se o gráfico já existe, apenas atualiza os dados
+                graficoStatus.data.datasets[0].data = [pendentes, emAndamento, resolvidos];
+                graficoStatus.update();
+            } else {
+                // Se não existe, cria-o
+                const ctxStatus = document.getElementById('grafico-status').getContext('2d');
+                graficoStatus = new Chart(ctxStatus, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Pendente', 'Em Andamento', 'Resolvido'],
+                        datasets: [{
+                            label: 'Status',
+                            data: [pendentes, emAndamento, resolvidos],
+                            backgroundColor: [corVermelhaStatus, corAmarelaSCC, corVerdeSCC],
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                // A TUA LÓGICA DE FILTRO (com "tracejado")
+                                onClick: (e, legendItem, legend) => {
+                                    legendItem.hidden = !legendItem.hidden;
+                                    filtrosStatus[legendItem.text] = !legendItem.hidden; 
+                                    legend.chart.toggleDataVisibility(legendItem.index);
+                                    legend.chart.update();
+                                    aplicarFiltrosEAtualizarDashboard();
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
+            }
         }
 
-        // --- Esta função é do teu código funcional ---
-        function criarGraficoTipos(dados) {
+        // ATUALIZADO: Atualiza Gráfico de Tipos (Bar)
+        function atualizarGraficoTipos(dados) {
             let tipos = {};
+            dados.forEach(item => {
+                if (item.tipo) { tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; }
+            });
+
             const coresBase = [corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus, '#6366f1', '#ec4899'];
             
-            dados.forEach((item, index) => {
-                if (item.tipo) { 
-                    tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; 
-                }
+            // Transforma os tipos em datasets (Múltiplos datasets)
+            const datasets = Object.keys(tipos).map((tipo, index) => {
+                return {
+                    label: tipo, // O nome clicável na legenda
+                    data: [tipos[tipo]], // Um array com um só valor
+                    backgroundColor: coresBase[index % coresBase.length]
+                };
             });
 
-            const backgroundColors = Object.keys(tipos).map((tipo, index) => {
-                return coresBase[index % coresBase.length];
-            });
-
-            const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
-            if (graficoTipos) graficoTipos.destroy(); 
-            graficoTipos = new Chart(ctxTipos, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(tipos),
-                    datasets: [{
-                        label: 'Nº de Ocorrências',
-                        data: Object.values(tipos),
-                        backgroundColor: backgroundColors,
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: true, indexAxis: 'y',
-                    scales: { 
-                        y: { beginAtZero: true },
-                        x: { ticks: { stepSize: (dados.length > 0 && dados.length < 10) ? 1 : undefined } } 
+            if (graficoTipos) {
+                // Se o gráfico já existe, atualiza os datasets
+                graficoTipos.data.datasets = datasets;
+                graficoTipos.update();
+            } else {
+                // Se não existe, cria-o
+                const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
+                graficoTipos = new Chart(ctxTipos, {
+                    type: 'bar', // Gráfico de barras vertical
+                    data: {
+                        labels: ['Tipos'], // Um rótulo genérico (e escondido) no eixo X
+                        datasets: datasets // Múltiplos datasets
                     },
-                    plugins: {
-                        legend: { display: false } // A tua regra de esconder a legenda
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            // ### AQUI ESTÁ A NOVA LÓGICA DE FILTRO ###
+                            legend: {
+                                display: true, // Garante que a legenda está visível
+                                onClick: (e, legendItem, legend) => {
+                                    // 1. Lógica do "tracejado"
+                                    legendItem.hidden = !legendItem.hidden;
+                                    // 2. Atualiza filtro de Tipo
+                                    filtrosTipo[legendItem.text] = !legendItem.hidden;
+                                    // 3. Atualiza gráfico
+                                    legend.chart.toggleDataVisibility(legendItem.index);
+                                    legend.chart.update();
+                                    // 4. Atualiza o resto
+                                    aplicarFiltrosEAtualizarDashboard();
+                                }
+                            }
+                        },
+                        scales: { 
+                            y: { beginAtZero: true },
+                            x: { ticks: { display: false } } // Esconde o label "Tipos" no eixo x
+                        }
                     }
-                }
-            });
+                });
+            }
         }
         
-        // --- Esta função é do teu código funcional ---
-        function atualizarGraficoTipos(dadosFiltrados) {
-            if (!graficoTipos) return; 
-            
-            let tipos = {};
-            dadosFiltrados.forEach(item => {
-                if (item.tipo) { 
-                    tipos[item.tipo] = (tipos[item.tipo] || 0) + 1; 
-                }
-            });
-            
-            graficoTipos.data.labels = Object.keys(tipos);
-            graficoTipos.data.datasets[0].data = Object.values(tipos);
-            
-            const coresBase = [corAzulSCC, corVerdeSCC, corAmarelaSCC, corVermelhaStatus, '#6366f1', '#ec4899'];
-            graficoTipos.data.datasets[0].backgroundColor = graficoTipos.data.labels.map((tipo, index) => {
-                return coresBase[index % coresBase.length];
-            });
-            
-            graficoTipos.update();
-        }
-
-        // --- 5. Inicializar Mapa (ALTERADO para Google Maps) ---
+        // --- 5. Inicializar Mapa (Google Maps) ---
         function inicializarMapa() {
             if (mapa) return; 
-            const sccCoords = { lat: -7.954, lng: -36.204 }; // Coordenadas de Santa Cruz do Capibaribe
+            const sccCoords = { lat: -7.954, lng: -36.204 }; 
             mapa = new google.maps.Map(document.getElementById('mapa'), {
                 center: sccCoords,
                 zoom: 14,
@@ -387,10 +371,9 @@
             });
         }
 
-        // --- 6. LIGAR AO FIREBASE (ALTERADO para usar initMap) ---
-        // Esta função é o PONTO DE ENTRADA, chamada pelo script do Google Maps
+        // --- 6. LIGAR AO FIREBASE (Ponto de Entrada) ---
         function initMap() {
-            // Agora temos a certeza que os elementos existem
+            // Garante que os elementos existem
             feedbackMsg = document.getElementById('feedback-msg');
             totalMetric = document.getElementById('total-metric');
             pendenteMetric = document.getElementById('pendente-metric');
@@ -398,29 +381,27 @@
             
             try {
                 inicializarMapa(); // Inicializa o mapa
-                
                 const q = query(collection(db, "ocorrencias"));
                 
-                // 'onSnapshot' é o "ouvinte" em tempo real
                 onSnapshot(q, (snapshot) => {
-                    // 1. Atualiza a nossa base de dados global
                     todosOsDados = []; 
+                    filtrosTipo = {}; // Limpa e repopula os filtros de tipo
+                    
                     snapshot.forEach((doc) => {
-                        todosOsDados.push(doc.data()); 
+                        const data = doc.data();
+                        todosOsDados.push(data); 
+                        if (data.tipo && !filtrosTipo.hasOwnProperty(data.tipo)) {
+                            filtrosTipo[data.tipo] = true; // Ativa todos por defeito
+                        }
                     });
 
-                    // 2. Cria os gráficos pela primeira vez com os dados TOTAIS
-                    criarGraficoStatus(todosOsDados);
-                    criarGraficoTipos(todosOsDados);
-
-                    // 3. Aplica os filtros (default) e atualiza o resto
+                    // Aplica os filtros (default) e atualiza TUDO
                     aplicarFiltrosEAtualizarDashboard(); 
 
-                    // Mostra feedback de sucesso
                     if (todosOsDados.length === 0) {
                         mostrarFeedback('info', 'Nenhuma ocorrência encontrada.');
                     } else {
-                        feedbackMsg.classList.add('hidden'); // Esconde o feedback
+                        feedbackMsg.classList.add('hidden'); 
                     }
 
                 }, (error) => {
@@ -439,9 +420,7 @@
 
     </script>
     
-    <!--
-    SCRIPT DO GOOGLE MAPS (com a tua Chave de API)
-    -->
+    <!-- SCRIPT DO GOOGLE MAPS (com a tua Chave de API) -->
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOOXahjFFUioJ0V7aRAhR6h8cOdyYs-oc&callback=initMap&v=weekly" async></script>
 
 </body>
