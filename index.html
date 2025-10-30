@@ -7,6 +7,8 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- REMOVIDO: Leaflet CSS -->
+    
     <!-- Chart.js (para os gráficos) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Font Awesome (Ícones) -->
@@ -32,7 +34,7 @@
 
     <div class="max-w-7xl mx-auto p-4 md:p-8">
         
-        <!-- Cabeçalho (igual) -->
+        <!-- Cabeçalho -->
         <header class="scc-bg-blue p-6 rounded-lg shadow-lg mb-8">
             <div class="flex items-center justify-between">
                 <div>
@@ -46,55 +48,49 @@
             </div>
         </header>
 
-        <!-- Feedback (igual) -->
+        <!-- Feedback -->
         <div id="feedback-msg" class="mb-6 p-4 rounded-lg text-center font-medium bg-blue-100 text-blue-700 animate-pulse">
             <i class="fas fa-spinner fa-spin mr-2"></i>
             A ligar à base de dados...
         </div>
 
-        <!-- ############################################# -->
-        <!-- ### MÉTRICAS (TWEAK 2: RESPONSIVIDADE) ### -->
-        <!-- ############################################# -->
+        <!-- Métricas (V4.2) -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-             <!-- ATUALIZADO: p-4 md:p-6 (mais pequeno no telemóvel) -->
              <div class="bg-white p-4 md:p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Total de Ocorrências</span>
-                    <!-- ATUALIZADO: text-2xl md:text-3xl (mais pequeno no telemóvel) -->
                     <p id="total-metric" class="text-2xl md:text-3xl font-bold scc-text-blue">...</p>
                 </div>
                 <i class="fas fa-bullhorn fa-2x text-gray-300"></i>
             </div>
-            <!-- ATUALIZADO: p-4 md:p-6 -->
              <div class="bg-white p-4 md:p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Pendentes</span>
-                    <!-- ATUALIZADO: text-2xl md:text-3xl -->
                     <p id="pendente-metric" class="text-2xl md:text-3xl font-bold text-red-600">...</p>
                 </div>
                 <i class="fas fa-clock fa-2x text-gray-300"></i>
             </div>
-            <!-- ATUALIZADO: p-4 md:p-6 -->
              <div class="bg-white p-4 md:p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Resolvidos</span>
-                    <!-- ATUALIZADO: text-2xl md:text-3xl -->
                     <p id="resolvido-metric" class="text-2xl md:text-3xl font-bold scc-text-green">...</p>
                 </div>
                 <i class="fas fa-check-circle fa-2x text-gray-300"></i>
             </div>
         </div>
-        <!-- ############################################# -->
 
 
         <!-- Mapa e Gráficos -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
                 
-                <!-- Botão "Onde estou?" (V4) -->
+                <!-- ############################################# -->
+                <!-- ### BOTÃO "ONDE ESTOU?" (V4.3 - NOVO ESTILO) ### -->
+                <!-- ############################################# -->
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold scc-text-blue">Mapa de Ocorrências</h2>
-                    <button id="find-me-btn" class="flex items-center px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded-lg shadow-sm hover:bg-blue-50 transition-colors">
+                    <!-- ATUALIZADO: Cor amarela pastel para destaque -->
+                    <button id="find-me-btn" class="flex items-center px-4 py-2 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded-lg shadow-sm hover:bg-yellow-200 transition-colors">
                         <i class="fas fa-location-crosshairs mr-2"></i>
                         Onde estou?
                     </button>
@@ -104,24 +100,17 @@
             </div>
             <div class="space-y-6">
                 
-                <!-- ############################################# -->
-                <!-- ### GRÁFICOS (TWEAK 1: TEXTO DE AJUDA) ### -->
-                <!-- ############################################# -->
+                <!-- Gráficos (V4.2 com texto de ajuda) -->
                 <div class="bg-white p-6 rounded-lg shadow-md">
-                    <!-- ATUALIZADO: mb-1 (espaçamento) -->
                     <h2 class="text-xl font-semibold mb-1 scc-text-blue">Status Geral</h2>
-                    <!-- NOVO: Texto de ajuda -->
                     <p class="text-xs italic text-gray-500 mb-3">Clique na legenda para filtrar</p>
                     <canvas id="grafico-status"></canvas>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow-md">
-                    <!-- ATUALIZADO: mb-1 (espaçamento) -->
                     <h2 class="text-xl font-semibold mb-1 scc-text-blue">Tipos de Ocorrência</h2>
-                    <!-- NOVO: Texto de ajuda -->
                     <p class="text-xs italic text-gray-500 mb-3">Clique na legenda para filtrar</p>
                     <canvas id="grafico-tipos"></canvas>
                 </div>
-                <!-- ############################################# -->
             </div>
         </div>
     </div>
@@ -142,6 +131,8 @@
     </a>
 
     
+    <!-- REMOVIDO: Leaflet JS -->
+
     <!-- SDKs do Firebase (Módulos v9) -->
     <script type="module">
         // Importa as funções necessárias
@@ -191,12 +182,21 @@
             "Pendente": iconUrlBase + "red-dot.png",
             "Em Andamento": iconUrlBase + "yellow-dot.png",
             "Resolvido": iconUrlBase + "green-dot.png",
-            "User": iconUrlBase + "blue-dot.png" 
+            // --- A TUA "BOLINHA AZUL" (V4.3 - SVG NATIVO) ---
+            "User": {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: "#4285F4", 
+                fillOpacity: 1,
+                strokeColor: "white",
+                strokeWeight: 2,
+            }
         };
 
         // --- 1. Função de Feedback ---
         function mostrarFeedback(tipo, mensagem) {
             if (!feedbackMsg) feedbackMsg = document.getElementById('feedback-msg');
+            if (!feedbackMsg) return; // Segurança
             feedbackMsg.classList.remove('hidden', 'bg-blue-100', 'text-blue-700', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'animate-pulse');
             if (tipo === 'loading') {
                 feedbackMsg.classList.add('bg-blue-100', 'text-blue-700', 'animate-pulse');
@@ -210,7 +210,7 @@
         }
 
         
-        // --- 2. Função Centralizada de Atualização ---
+        // --- 2. Função Centralizada de Atualização (A tua lógica V3) ---
         function aplicarFiltrosEAtualizarDashboard() {
             
             const dadosFiltradosFinal = todosOsDados.filter(item => {
@@ -238,6 +238,7 @@
 
         // --- 3. Funções de Atualização Específicas ---
 
+        // ATUALIZADO para Google Maps
         function atualizarMapaPins(dados) {
             if (!mapa) inicializarMapa(); 
             googleMarkers.forEach(marker => marker.setMap(null));
@@ -274,6 +275,7 @@
             });
         }
 
+        // A tua função de Métricas
         function atualizarMetricas(dados) {
             let total = dados.length;
             let pendentes = 0, resolvidos = 0, emAndamento = 0; 
@@ -282,13 +284,15 @@
                 else if (item.status === 'Em Andamento') { emAndamento++; }
                 else { pendentes++; }
             });
-            totalMetric.textContent = total;
-            pendenteMetric.textContent = pendentes;
-            resolvidoMetric.textContent = resolvidos;
+
+            if (totalMetric) totalMetric.textContent = total;
+            if (pendenteMetric) pendenteMetric.textContent = pendentes;
+            if (resolvidoMetric) resolvidoMetric.textContent = resolvidos;
         }
 
         // --- 4. Funções de Criação/Atualização dos Gráficos ---
 
+        // A tua função de Gráfico de Status (COM O CLIQUE DE "TRACEJADO")
         function atualizarGraficoStatus(dados) {
             let pendentes = 0, resolvidos = 0, emAndamento = 0; 
             dados.forEach(item => {
@@ -301,8 +305,10 @@
                 graficoStatus.data.datasets[0].data = [pendentes, emAndamento, resolvidos];
                 graficoStatus.update();
             } else {
-                const ctxStatus = document.getElementById('grafico-status').getContext('2d');
-                graficoStatus = new Chart(ctxStatus, {
+                const ctxStatus = document.getElementById('grafico-status');
+                if (!ctxStatus) return; 
+                
+                graficoStatus = new Chart(ctxStatus.getContext('2d'), {
                     type: 'doughnut',
                     data: {
                         labels: ['Pendente', 'Em Andamento', 'Resolvido'],
@@ -318,7 +324,7 @@
                         maintainAspectRatio: true,
                         plugins: {
                             legend: {
-                                // A LÓGICA DE FILTRO (com "tracejado")
+                                // A LÓGICA DE FILTRO CORRETA (do teu V3)
                                 onClick: (e, legendItem, legend) => {
                                     legendItem.hidden = !legendItem.hidden;
                                     filtrosStatus[legendItem.text] = !legendItem.hidden; 
@@ -333,6 +339,7 @@
             }
         }
 
+        // A tua função de Gráfico de Tipos (COM O CLIQUE DE "TRACEJADO")
         function atualizarGraficoTipos(dados) {
             let tipos = {};
             dados.forEach(item => {
@@ -354,8 +361,10 @@
                 graficoTipos.data.datasets = datasets;
                 graficoTipos.update();
             } else {
-                const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
-                graficoTipos = new Chart(ctxTipos, {
+                const ctxTipos = document.getElementById('grafico-tipos');
+                if (!ctxTipos) return; 
+
+                graficoTipos = new Chart(ctxTipos.getContext('2d'), {
                     type: 'bar', 
                     data: {
                         labels: ['Tipos'], 
@@ -381,11 +390,14 @@
             }
         }
         
-        // --- 5. Inicializar Mapa (Google Maps) ---
+        // --- 5. Inicializar Mapa (ALTERADO para Google Maps) ---
         function inicializarMapa() {
             if (mapa) return; 
             const sccCoords = { lat: -7.954, lng: -36.204 }; 
-            mapa = new google.maps.Map(document.getElementById('mapa'), {
+            const mapElement = document.getElementById('mapa');
+            if (!mapElement) return; 
+            
+            mapa = new google.maps.Map(mapElement, {
                 center: sccCoords,
                 zoom: 14,
                 mapTypeId: 'hybrid', // MODO HÍBRIDO (Satélite + Ruas)
@@ -394,7 +406,12 @@
         }
 
         // --- 6. LIGAR AO FIREBASE (Ponto de Entrada) ---
-        function initMap() {
+        // #############################################
+        // ### A CORREÇÃO DE "CRASH" ESTÁ AQUI (window.onload) ###
+        // #############################################
+        // Usa a tua lógica V3 que espera TUDO carregar
+        window.onload = () => {
+            // Agora temos a CERTEZA que os elementos existem
             feedbackMsg = document.getElementById('feedback-msg');
             totalMetric = document.getElementById('total-metric');
             pendenteMetric = document.getElementById('pendente-metric');
@@ -402,6 +419,7 @@
             findMeBtn = document.getElementById('find-me-btn'); 
             
             try {
+                // SÓ inicializa o mapa e liga o Firebase DEPOIS de o 'onload' disparar
                 inicializarMapa(); 
                 conectarAoFirestore(); 
                 adicionarEventoFindMe(); 
@@ -410,8 +428,9 @@
                 mostrarFeedback('error', 'Ocorreu um erro ao carregar a aplicação.');
             }
         };
+        // #############################################
 
-        // --- 7. Função de Ligação ao Firestore ---
+        // --- 7. Função de Ligação ao Firestore (do teu V3) ---
         function conectarAoFirestore() {
             const q = query(collection(db, "ocorrencias"));
             onSnapshot(q, (snapshot) => {
@@ -425,6 +444,12 @@
                         filtrosTipo[data.tipo] = true; 
                     }
                 });
+
+                // Cria os gráficos na primeira vez
+                // (Isto estava a faltar na minha versão "crashada")
+                if (!graficoStatus) criarGraficoStatus(todosOsDados);
+                if (!graficoTipos) criarGraficoTipos(todosOsDados);
+
                 aplicarFiltrosEAtualizarDashboard(); 
                 if (todosOsDados.length === 0) {
                     mostrarFeedback('info', 'Nenhuma ocorrência encontrada.');
@@ -439,6 +464,8 @@
 
         // --- 8. Função para o Botão "Onde estou?" ---
         function adicionarEventoFindMe() {
+            if (!findMeBtn) return; 
+            
             findMeBtn.addEventListener('click', () => {
                 if ('geolocation' in navigator) {
                     findMeBtn.disabled = true;
@@ -459,7 +486,7 @@
                             userLocationMarker = new google.maps.Marker({
                                 position: userPos,
                                 map: mapa,
-                                icon: icons["User"],
+                                icon: icons["User"], // Usa a "bolinha azul"
                                 title: "Você está aqui"
                             });
                         }
@@ -479,13 +506,18 @@
             });
         }
         
-        // Torna a função initMap acessível globalmente
-        window.initMap = initMap;
+        // REMOVIDO: window.initMap (não é mais necessário)
 
     </script>
     
-    <!-- SCRIPT DO GOOGLE MAPS (com a tua Chave de API) -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOOXahjFFUioJ0V7aRAhR6h8cOdyYs-oc&callback=initMap&v=weekly" async></script>
+    <!-- 
+    SCRIPT DO GOOGLE MAPS
+    #############################################
+    ### A CORREÇÃO ESTÁ AQUI: REMOVIDO 'callback=initMap' e 'defer' ###
+    #############################################
+    Apenas carregamos o script. O 'window.onload' vai tratar de o usar.
+    -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOOXahjFFUioJ0V7aRAhR6h8cOdyYs-oc&v=weekly" async></script>
 
 </body>
 </html>
