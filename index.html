@@ -52,76 +52,64 @@
             A ligar à base de dados...
         </div>
 
-        <!-- ############################################# -->
-        <!-- ### MÉTRICAS (TWEAK 2: RESPONSIVIDADE) ### -->
-        <!-- ############################################# -->
+        <!-- Métricas (V4.2) -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-             <!-- ATUALIZADO: p-4 md:p-6 (mais pequeno no telemóvel) -->
              <div class="bg-white p-4 md:p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Total de Ocorrências</span>
-                    <!-- ATUALIZADO: text-2xl md:text-3xl (mais pequeno no telemóvel) -->
                     <p id="total-metric" class="text-2xl md:text-3xl font-bold scc-text-blue">...</p>
                 </div>
                 <i class="fas fa-bullhorn fa-2x text-gray-300"></i>
             </div>
-            <!-- ATUALIZADO: p-4 md:p-6 -->
              <div class="bg-white p-4 md:p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Pendentes</span>
-                    <!-- ATUALIZADO: text-2xl md:text-3xl -->
                     <p id="pendente-metric" class="text-2xl md:text-3xl font-bold text-red-600">...</p>
                 </div>
                 <i class="fas fa-clock fa-2x text-gray-300"></i>
             </div>
-            <!-- ATUALIZADO: p-4 md:p-6 -->
              <div class="bg-white p-4 md:p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Resolvidos</span>
-                    <!-- ATUALIZADO: text-2xl md:text-3xl -->
                     <p id="resolvido-metric" class="text-2xl md:text-3xl font-bold scc-text-green">...</p>
                 </div>
                 <i class="fas fa-check-circle fa-2x text-gray-300"></i>
             </div>
         </div>
-        <!-- ############################################# -->
 
 
         <!-- Mapa e Gráficos -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
                 
-                <!-- Botão "Onde estou?" (V4) -->
+                <!-- ############################################# -->
+                <!-- ### BOTÃO "ONDE ESTOU?" (V4.3 - NOVO ESTILO) ### -->
+                <!-- ############################################# -->
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold scc-text-blue">Mapa de Ocorrências</h2>
-                    <button id="find-me-btn" class="flex items-center px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded-lg shadow-sm hover:bg-blue-50 transition-colors">
+                    <!-- ATUALIZADO: Cor amarela pastel para destaque -->
+                    <button id="find-me-btn" class="flex items-center px-4 py-2 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded-lg shadow-sm hover:bg-yellow-200 transition-colors">
                         <i class="fas fa-location-crosshairs mr-2"></i>
                         Onde estou?
                     </button>
                 </div>
+                <!-- ############################################# -->
 
                 <div id="mapa"></div>
             </div>
             <div class="space-y-6">
                 
-                <!-- ############################################# -->
-                <!-- ### GRÁFICOS (TWEAK 1: TEXTO DE AJUDA) ### -->
-                <!-- ############################################# -->
+                <!-- Gráficos (V4.2 com texto de ajuda) -->
                 <div class="bg-white p-6 rounded-lg shadow-md">
-                    <!-- ATUALIZADO: mb-1 (espaçamento) -->
                     <h2 class="text-xl font-semibold mb-1 scc-text-blue">Status Geral</h2>
-                    <!-- NOVO: Texto de ajuda -->
                     <p class="text-xs italic text-gray-500 mb-3">Clique na legenda para filtrar</p>
                     <canvas id="grafico-status"></canvas>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow-md">
-                    <!-- ATUALIZADO: mb-1 (espaçamento) -->
                     <h2 class="text-xl font-semibold mb-1 scc-text-blue">Tipos de Ocorrência</h2>
-                    <!-- NOVO: Texto de ajuda -->
                     <p class="text-xs italic text-gray-500 mb-3">Clique na legenda para filtrar</p>
                     <canvas id="grafico-tipos"></canvas>
                 </div>
-                <!-- ############################################# -->
             </div>
         </div>
     </div>
@@ -185,13 +173,25 @@
         const corAmarelaSCC = '#f59e0b';
         const corVermelhaStatus = '#dc2626';
 
-        // URLs dos Ícones do Google Maps
+        // --- URLs dos Ícones do Google Maps ---
         const iconUrlBase = "http://maps.google.com/mapfiles/ms/icons/";
         const icons = {
             "Pendente": iconUrlBase + "red-dot.png",
             "Em Andamento": iconUrlBase + "yellow-dot.png",
             "Resolvido": iconUrlBase + "green-dot.png",
-            "User": iconUrlBase + "blue-dot.png" 
+            
+            // #############################################
+            // ### ÍCONE DO UTILIZADOR (V4.3 - SVG NATIVO) ###
+            // #############################################
+            "User": {
+                // Cria um SVG que imita a "bolinha azul" nativa
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: "#4285F4", // Azul Google
+                fillOpacity: 1,
+                strokeColor: "white",
+                strokeWeight: 2,
+            }
         };
 
         // --- 1. Função de Feedback ---
@@ -459,7 +459,7 @@
                             userLocationMarker = new google.maps.Marker({
                                 position: userPos,
                                 map: mapa,
-                                icon: icons["User"],
+                                icon: icons["User"], // <-- USA O NOVO ÍCONE SVG
                                 title: "Você está aqui"
                             });
                         }
