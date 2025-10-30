@@ -72,6 +72,7 @@
                 <div>
                     <span class="text-sm font-medium text-gray-500">Resolvidos</span>
                     <p id="resolvido-metric" class="text-2xl md:text-3xl font-bold scc-text-green">...</p>
+
                 </div>
                 <i class="fas fa-check-circle fa-2x text-gray-300"></i>
             </div>
@@ -82,18 +83,14 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
                 
-                <!-- ############################################# -->
-                <!-- ### BOTÃO "ONDE ESTOU?" (V4.3 - NOVO ESTILO) ### -->
-                <!-- ############################################# -->
+                <!-- Botão "Onde estou?" (V4.3) -->
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold scc-text-blue">Mapa de Ocorrências</h2>
-                    <!-- ATUALIZADO: Cor amarela pastel para destaque -->
                     <button id="find-me-btn" class="flex items-center px-4 py-2 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded-lg shadow-sm hover:bg-yellow-200 transition-colors">
                         <i class="fas fa-location-crosshairs mr-2"></i>
                         Onde estou?
                     </button>
                 </div>
-                <!-- ############################################# -->
 
                 <div id="mapa"></div>
             </div>
@@ -173,21 +170,16 @@
         const corAmarelaSCC = '#f59e0b';
         const corVermelhaStatus = '#dc2626';
 
-        // --- URLs dos Ícones do Google Maps ---
+        // URLs dos Ícones do Google Maps
         const iconUrlBase = "http://maps.google.com/mapfiles/ms/icons/";
         const icons = {
             "Pendente": iconUrlBase + "red-dot.png",
             "Em Andamento": iconUrlBase + "yellow-dot.png",
             "Resolvido": iconUrlBase + "green-dot.png",
-            
-            // #############################################
-            // ### ÍCONE DO UTILIZADOR (V4.3 - SVG NATIVO) ###
-            // #############################################
             "User": {
-                // Cria um SVG que imita a "bolinha azul" nativa
                 path: google.maps.SymbolPath.CIRCLE,
                 scale: 8,
-                fillColor: "#4285F4", // Azul Google
+                fillColor: "#4285F4", 
                 fillOpacity: 1,
                 strokeColor: "white",
                 strokeWeight: 2,
@@ -197,6 +189,13 @@
         // --- 1. Função de Feedback ---
         function mostrarFeedback(tipo, mensagem) {
             if (!feedbackMsg) feedbackMsg = document.getElementById('feedback-msg');
+            
+            // Verificação de segurança: se feedbackMsg AINDA for nulo, não faz nada
+            if (!feedbackMsg) {
+                console.error("Falha ao mostrar feedback, elemento 'feedback-msg' não encontrado.");
+                return;
+            }
+
             feedbackMsg.classList.remove('hidden', 'bg-blue-100', 'text-blue-700', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'animate-pulse');
             if (tipo === 'loading') {
                 feedbackMsg.classList.add('bg-blue-100', 'text-blue-700', 'animate-pulse');
@@ -282,9 +281,11 @@
                 else if (item.status === 'Em Andamento') { emAndamento++; }
                 else { pendentes++; }
             });
-            totalMetric.textContent = total;
-            pendenteMetric.textContent = pendentes;
-            resolvidoMetric.textContent = resolvidos;
+
+            // Verificação de segurança: Só atualiza se os elementos existirem
+            if (totalMetric) totalMetric.textContent = total;
+            if (pendenteMetric) pendenteMetric.textContent = pendentes;
+            if (resolvidoMetric) resolvidoMetric.textContent = resolvidos;
         }
 
         // --- 4. Funções de Criação/Atualização dos Gráficos ---
@@ -301,8 +302,10 @@
                 graficoStatus.data.datasets[0].data = [pendentes, emAndamento, resolvidos];
                 graficoStatus.update();
             } else {
-                const ctxStatus = document.getElementById('grafico-status').getContext('2d');
-                graficoStatus = new Chart(ctxStatus, {
+                const ctxStatus = document.getElementById('grafico-status');
+                if (!ctxStatus) return; // Verificação de segurança
+                
+                graficoStatus = new Chart(ctxStatus.getContext('2d'), {
                     type: 'doughnut',
                     data: {
                         labels: ['Pendente', 'Em Andamento', 'Resolvido'],
@@ -318,7 +321,6 @@
                         maintainAspectRatio: true,
                         plugins: {
                             legend: {
-                                // A LÓGICA DE FILTRO (com "tracejado")
                                 onClick: (e, legendItem, legend) => {
                                     legendItem.hidden = !legendItem.hidden;
                                     filtrosStatus[legendItem.text] = !legendItem.hidden; 
@@ -354,8 +356,10 @@
                 graficoTipos.data.datasets = datasets;
                 graficoTipos.update();
             } else {
-                const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
-                graficoTipos = new Chart(ctxTipos, {
+                const ctxTipos = document.getElementById('grafico-tipos');
+                if (!ctxTipos) return; // Verificação de segurança
+
+                graficoTipos = new Chart(ctxTipos.getContext('2d'), {
                     type: 'bar', 
                     data: {
                         labels: ['Tipos'], 
@@ -385,7 +389,10 @@
         function inicializarMapa() {
             if (mapa) return; 
             const sccCoords = { lat: -7.954, lng: -36.204 }; 
-            mapa = new google.maps.Map(document.getElementById('mapa'), {
+            const mapElement = document.getElementById('mapa');
+            if (!mapElement) return; // Verificação de segurança
+            
+            mapa = new google.maps.Map(mapElement, {
                 center: sccCoords,
                 zoom: 14,
                 mapTypeId: 'hybrid', // MODO HÍBRIDO (Satélite + Ruas)
@@ -395,6 +402,7 @@
 
         // --- 6. LIGAR AO FIREBASE (Ponto de Entrada) ---
         function initMap() {
+            // AGORA SIM: Espera o DOM estar 100% pronto
             feedbackMsg = document.getElementById('feedback-msg');
             totalMetric = document.getElementById('total-metric');
             pendenteMetric = document.getElementById('pendente-metric');
@@ -439,6 +447,8 @@
 
         // --- 8. Função para o Botão "Onde estou?" ---
         function adicionarEventoFindMe() {
+            if (!findMeBtn) return; // Verificação de segurança
+            
             findMeBtn.addEventListener('click', () => {
                 if ('geolocation' in navigator) {
                     findMeBtn.disabled = true;
@@ -459,7 +469,7 @@
                             userLocationMarker = new google.maps.Marker({
                                 position: userPos,
                                 map: mapa,
-                                icon: icons["User"], // <-- USA O NOVO ÍCONE SVG
+                                icon: icons["User"], 
                                 title: "Você está aqui"
                             });
                         }
@@ -484,8 +494,13 @@
 
     </script>
     
-    <!-- SCRIPT DO GOOGLE MAPS (com a tua Chave de API) -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOOXahjFFUioJ0V7aRAhR6h8cOdyYs-oc&callback=initMap&v=weekly" async></script>
+    <!-- 
+    SCRIPT DO GOOGLE MAPS (com a tua Chave de API)
+    #############################################
+    ### A CORREÇÃO ESTÁ AQUI: Adicionado 'defer' ###
+    #############################################
+    -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOOXahjFFUioJ0V7aRAhR6h8cOdyYs-oc&callback=initMap&v=weekly" async defer></script>
 
 </body>
 </html>
