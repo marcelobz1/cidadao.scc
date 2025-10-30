@@ -7,16 +7,15 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Leaflet CSS (para o mapa) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
     <!-- Chart.js (para os gráficos) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Font Awesome (Ícones) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <!-- Fonte Inter -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
-    
-    <!-- SCRIPT DO GOOGLE MAPS (CARREGADO NO HEAD) -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOOXahjFFUioJ0V7aRAhR6h8cOdyYs-oc&v=weekly"></script>
-    
     <style>
         body { font-family: 'Inter', sans-serif; }
         #mapa { 
@@ -24,6 +23,11 @@
             border-radius: 0.5rem; 
             background-color: #f3f4f6; 
         }
+        /* ESTES Ícones SÃO DO TEU CÓDIGO LEAFLET (VÃO FUNCIONAR) */
+        .pin-vermelho { color: #dc2626; } /* red-600 */
+        .pin-amarelo { color: #f59e0b; } /* amber-500 */
+        .pin-verde { color: #16a34a; }  /* green-600 */
+
         .scc-bg-blue { background-color: #312e81; }
         .scc-bg-green { background-color: #15803d; }
         .scc-text-blue { color: #312e81; }
@@ -86,9 +90,10 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
                 
-                <!-- Botão "Onde estou?" (V4.3) -->
+                <!-- Botão "Onde estou?" (V4) -->
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold scc-text-blue">Mapa de Ocorrências</h2>
+                    <!-- ATUALIZADO: Cor amarela pastel (o teu pedido V5) -->
                     <button id="find-me-btn" class="flex items-center px-4 py-2 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded-lg shadow-sm hover:bg-yellow-200 transition-colors">
                         <i class="fas fa-location-crosshairs mr-2"></i>
                         Onde estou?
@@ -130,6 +135,9 @@
     </a>
 
     
+    <!-- Leaflet JS (DO TEU CÓDIGO FUNCIONAL) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
     <!-- SDKs do Firebase (Módulos v9) -->
     <script type="module">
         // Importa as funções necessárias
@@ -156,15 +164,18 @@
         let graficoStatus = null;
         let graficoTipos = null;
 
-        // --- Variáveis do Mapa (Google Maps) ---
-        let mapa = null; 
-        let googleMarkers = []; 
-        let infoWindow = null; 
-        let userLocationMarker = null; 
+        // --- Variáveis do Mapa (Leaflet) ---
+        let mapa = null;
+        let layerGrupo = null;
+        let userLocationMarker = null; // Marcador para o "Onde estou?"
 
         // --- Variáveis de Lógica (do teu V3 funcional) ---
-        let todosOsDados = [];
-        let filtrosStatus = { "Pendente": true, "Em Andamento": true, "Resolvido": true };
+        let todosOsDados = []; 
+        let filtrosStatus = { 
+            'Pendente': true,
+            'Em Andamento': true,
+            'Resolvido': true
+        };
         let filtrosTipo = {}; 
 
         // Cores
@@ -173,32 +184,28 @@
         const corAmarelaSCC = '#f59e0b';
         const corVermelhaStatus = '#dc2626';
 
-        // URLs dos Ícones do Google Maps
-        const iconUrlBase = "http://maps.google.com/mapfiles/ms/icons/";
-        const icons = {
-            "Pendente": iconUrlBase + "red-dot.png",
-            "Em Andamento": iconUrlBase + "yellow-dot.png",
-            "Resolvido": iconUrlBase + "green-dot.png",
-            "User": {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: "#4285F4", 
-                fillOpacity: 1,
-                strokeColor: "white",
-                strokeWeight: 2,
-            }
-        };
+        // --- Ícones do Leaflet (do teu V3 funcional) ---
+        const iconPendente = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-vermelho"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
+        const iconEmAndamento = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-amarelo"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
+        const iconResolvido = L.divIcon({ html: '<i class="fas fa-map-pin fa-3x pin-verde"></i>', className: '', iconSize: [32, 32], iconAnchor: [16, 32] });
+        // --- A TUA "BOLINHA AZUL" (V4.3 - mas para Leaflet) ---
+        const iconUser = L.divIcon({
+            html: `<div style="width: 16px; height: 16px; background-color: #4285F4; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px #000;"></div>`,
+            className: '',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
 
         // #############################################
-        // ### NOVO: V6 - DADOS DO TEU POLÍGONO KML ###
+        // ### V6: DADOS DO TEU POLÍGONO KML (para Leaflet) ###
         // #############################################
-        // Coordenadas que forneceste: -36.21664...,-7.9498...,0 ...
+        // Coordenadas que forneceste (convertidas para [lat, lng])
         const poligonoBairroCentro = [
-          { lat: -7.949892405700667, lng: -36.21664300943785 },
-          { lat: -7.943215223432971, lng: -36.21676433973632 },
-          { lat: -7.943200917962861, lng: -36.21890943470739 },
-          { lat: -7.949706077896568, lng: -36.21870397293382 },
-          { lat: -7.949892405700667, lng: -36.21664300943785 } // Fecha o polígono
+          [-7.949892405700667, -36.21664300943785],
+          [-7.943215223432971, -36.21676433973632],
+          [-7.943200917962861, -36.21890943470739],
+          [-7.949706077896568, -36.21870397293382],
+          [-7.949892405700667, -36.21664300943785] // Fecha o polígono
         ];
         // #############################################
 
@@ -248,25 +255,23 @@
 
         // --- 3. Funções de Atualização Específicas ---
 
-        // ATUALIZADO para Google Maps
+        // ATUALIZADO para Leaflet (do teu V3 funcional)
         function atualizarMapaPins(dados) {
-            if (!mapa) inicializarMapa(); 
-            googleMarkers.forEach(marker => marker.setMap(null));
-            googleMarkers = [];
-            if (!infoWindow) infoWindow = new google.maps.InfoWindow();
+            if (!layerGrupo) inicializarMapa(); 
+            layerGrupo.clearLayers(); // Limpa os pinos antigos
 
             dados.forEach(item => {
                 try {
                     const lat = parseFloat(item.latitude);
                     const lon = parseFloat(item.longitude);
                     if (isNaN(lat) || isNaN(lon)) return; 
-                    const iconUrl = icons[item.status] || icons["Pendente"];
-                    const marcador = new google.maps.Marker({
-                        position: { lat: lat, lng: lon },
-                        map: mapa,
-                        icon: iconUrl,
-                        animation: google.maps.Animation.DROP 
-                    });
+
+                    let icon = iconPendente;
+                    if (item.status === 'Resolvido') icon = iconResolvido;
+                    else if (item.status === 'Em Andamento') icon = iconEmAndamento;
+                    
+                    const marcador = L.marker([lat, lon], { icon: icon });
+                    
                     const infoConteudo = `
                         <div style="font-family: Inter, sans-serif; padding: 5px;">
                             <strong style="color: ${corAzulSCC};">${item.tipo || 'N/D'}</strong><br>
@@ -276,11 +281,8 @@
                             <strong>Descrição:</strong> ${item.descricao || 'N/D'}
                         </div>
                     `;
-                    marcador.addListener('click', () => {
-                        infoWindow.setContent(infoConteudo);
-                        infoWindow.open(mapa, marcador);
-                    });
-                    googleMarkers.push(marcador);
+                    marcador.bindPopup(infoConteudo);
+                    layerGrupo.addLayer(marcador);
                 } catch(e) { console.warn("Erro ao adicionar pino:", e); }
             });
         }
@@ -400,37 +402,44 @@
             }
         }
         
-        // --- 5. Inicializar Mapa (ALTERADO para Google Maps) ---
+        // --- 5. Inicializar Mapa (Leaflet) ---
         function inicializarMapa() {
             if (mapa) return; 
-            const sccCoords = { lat: -7.954, lng: -36.204 }; 
+            const sccCoords = [-7.954, -36.204]; // Coordenadas de Santa Cruz do Capibaribe
             const mapElement = document.getElementById('mapa');
             if (!mapElement) return; 
             
-            mapa = new google.maps.Map(mapElement, {
-                center: sccCoords,
-                zoom: 14,
-                mapTypeId: 'hybrid', // MODO HÍBRIDO (Satélite + Ruas)
-                mapId: "RADAR_CIDADAO_SCC_STYLE" 
-            });
+            mapa = L.map('mapa').setView(sccCoords, 14);
+            
+            // ATUALIZADO: Usando mapa Híbrido (Satélite + Ruas) do Google
+            L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{
+                maxZoom: 20,
+                subdomains:['mt0','mt1','mt2','mt3']
+            }).addTo(mapa);
+            
+            layerGrupo = L.layerGroup().addTo(mapa); 
 
             // #############################################
-            // ### NOVO: V6 - DESENHA O POLÍGONO ###
+            // ### V6/V7: DESENHA O POLÍGONO E O RÓTULO ###
             // #############################################
-            const bairroPoligono = new google.maps.Polygon({
-                paths: poligonoBairroCentro,
-                strokeColor: "#00FFFF", // Ciano (para destacar)
-                strokeOpacity: 0.9,
-                strokeWeight: 2,
+            const bairroPoligono = L.polygon(poligonoBairroCentro, {
+                color: "#00FFFF", // Ciano (borda)
+                weight: 2,
                 fillColor: "#00FFFF", // Ciano
-                fillOpacity: 0.15 // Bem transparente
-            });
-            bairroPoligono.setMap(mapa);
+                fillOpacity: 0.12 // V7: 20% mais transparente (0.15 * 0.8)
+            }).addTo(mapa);
+
+            // V7: Adiciona o Popup (balão) clicável
+            bairroPoligono.bindPopup(
+                `<div style="font-family: Inter, sans-serif; font-weight: bold; color: #312e81;">Loteamento - São Miguel 1</div>`
+            );
             // #############################################
         }
 
         // --- 6. LIGAR AO FIREBASE (Ponto de Entrada) ---
-        // A TUA ESTRUTURA `window.onload` (QUE FUNCIONA)
+        // #############################################
+        // ### A TUA ESTRUTURA `window.onload` (QUE FUNCIONA) ###
+        // #############################################
         window.onload = () => {
             feedbackMsg = document.getElementById('feedback-msg');
             totalMetric = document.getElementById('total-metric');
@@ -439,13 +448,9 @@
             findMeBtn = document.getElementById('find-me-btn'); 
             
             try {
-                if (typeof google === 'object' && typeof google.maps === 'object') {
-                    inicializarMapa(); 
-                    conectarAoFirestore(); 
-                    adicionarEventoFindMe(); 
-                } else {
-                    mostrarFeedback('error', 'Não foi possível carregar o Google Maps.');
-                }
+                inicializarMapa(); 
+                conectarAoFirestore(); 
+                adicionarEventoFindMe(); 
             } catch(e) {
                 console.error("Erro geral:", e);
                 mostrarFeedback('error', 'Ocorreu um erro ao carregar a aplicação.');
@@ -493,23 +498,17 @@
                     findMeBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> A localizar...';
                     
                     navigator.geolocation.getCurrentPosition((posicao) => {
-                        const userPos = {
-                            lat: posicao.coords.latitude,
-                            lng: posicao.coords.longitude
-                        };
+                        const userPos = [posicao.coords.latitude, posicao.coords.longitude];
                         
-                        mapa.setCenter(userPos);
-                        mapa.setZoom(17); 
+                        mapa.setView(userPos, 17); // Foca o mapa
 
                         if (userLocationMarker) {
-                            userLocationMarker.setPosition(userPos);
+                            userLocationMarker.setLatLng(userPos);
                         } else {
-                            userLocationMarker = new google.maps.Marker({
-                                position: userPos,
-                                map: mapa,
-                                icon: icons["User"], // Usa a "bolinha azul"
+                            userLocationMarker = L.marker(userPos, {
+                                icon: iconUser,
                                 title: "Você está aqui"
-                            });
+                            }).addTo(mapa);
                         }
                         
                         findMeBtn.disabled = false;
@@ -529,7 +528,7 @@
         
     </script>
     
-    <!-- O script do Google Maps foi movido para o <head> -->
+    <!-- REMOVIDO: O script do Google Maps foi movido -->
 
 </body>
 </html>
