@@ -77,10 +77,22 @@
             </div>
         </div>
 
-        <!-- Mapa e Gráficos (igual) -->
+        <!-- Mapa e Gráficos -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
-                <h2 class="text-2xl font-semibold mb-4 scc-text-blue">Mapa de Ocorrências</h2>
+                
+                <!-- ############################################# -->
+                <!-- ### NOVO: Botão "Onde estou?" ### -->
+                <!-- ############################################# -->
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold scc-text-blue">Mapa de Ocorrências</h2>
+                    <button id="find-me-btn" class="flex items-center px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded-lg shadow-sm hover:bg-blue-50 transition-colors">
+                        <i class="fas fa-location-crosshairs mr-2"></i>
+                        Onde estou?
+                    </button>
+                </div>
+                <!-- ############################################# -->
+
                 <div id="mapa"></div>
             </div>
             <div class="space-y-6">
@@ -95,6 +107,16 @@
             </div>
         </div>
     </div>
+
+    <!-- ############################################# -->
+    <!-- ### NOVO: Botão Flutuante "Reportar" ### -->
+    <!-- ############################################# -->
+    <a href="reportar-ocorrencia.html" 
+       title="Reportar Ocorrência"
+       class="fixed bottom-6 right-6 w-16 h-16 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition-transform transform hover:scale-110">
+        <i class="fas fa-plus fa-2x"></i>
+    </a>
+    <!-- ############################################# -->
 
     
     <!-- SDKs do Firebase (Módulos v9) -->
@@ -119,7 +141,7 @@
         const db = getFirestore(app);
 
         // --- Elementos do DOM ---
-        let feedbackMsg, totalMetric, pendenteMetric, resolvidoMetric;
+        let feedbackMsg, totalMetric, pendenteMetric, resolvidoMetric, findMeBtn;
         let graficoStatus = null;
         let graficoTipos = null;
 
@@ -127,6 +149,7 @@
         let mapa = null; 
         let googleMarkers = []; 
         let infoWindow = null; 
+        let userLocationMarker = null; // <-- NOVO: Marcador para "Onde estou?"
 
         // --- Variáveis de Lógica ---
         let todosOsDados = [];
@@ -144,7 +167,8 @@
         const icons = {
             "Pendente": iconUrlBase + "red-dot.png",
             "Em Andamento": iconUrlBase + "yellow-dot.png",
-            "Resolvido": iconUrlBase + "green-dot.png"
+            "Resolvido": iconUrlBase + "green-dot.png",
+            "User": iconUrlBase + "blue-dot.png" // <-- NOVO: Ícone para o utilizador
         };
 
         // --- 1. Função de Feedback ---
@@ -209,8 +233,6 @@
                         icon: iconUrl,
                         animation: google.maps.Animation.DROP 
                     });
-                    
-                    // --- NOVO: Adicionado 'item.endereco_formatado' ---
                     const infoConteudo = `
                         <div style="font-family: Inter, sans-serif; padding: 5px;">
                             <strong style="color: ${corAzulSCC};">${item.tipo || 'N/D'}</strong><br>
@@ -220,7 +242,6 @@
                             <strong>Descrição:</strong> ${item.descricao || 'N/D'}
                         </div>
                     `;
-                    
                     marcador.addListener('click', () => {
                         infoWindow.setContent(infoConteudo);
                         infoWindow.open(mapa, marcador);
@@ -355,41 +376,87 @@
             totalMetric = document.getElementById('total-metric');
             pendenteMetric = document.getElementById('pendente-metric');
             resolvidoMetric = document.getElementById('resolvido-metric');
+            findMeBtn = document.getElementById('find-me-btn'); // <-- NOVO: Pega no botão
             
             try {
                 inicializarMapa(); 
-                const q = query(collection(db, "ocorrencias"));
-                
-                onSnapshot(q, (snapshot) => {
-                    todosOsDados = []; 
-                    let tiposExistentes = Object.keys(filtrosTipo);
-                    
-                    snapshot.forEach((doc) => {
-                        const data = doc.data();
-                        todosOsDados.push(data); 
-                        if (data.tipo && !tiposExistentes.includes(data.tipo)) {
-                            filtrosTipo[data.tipo] = true; 
-                        }
-                    });
-
-                    aplicarFiltrosEAtualizarDashboard(); 
-
-                    if (todosOsDados.length === 0) {
-                        mostrarFeedback('info', 'Nenhuma ocorrência encontrada.');
-                    } else {
-                        feedbackMsg.classList.add('hidden'); 
-                    }
-
-                }, (error) => {
-                    console.error("Erro ao ligar ao Firestore: ", error);
-                    mostrarFeedback('error', `Não foi possível ligar à base de dados. <br><small>Verifique as regras do Firestore.</small>`);
-                });
-
+                conectarAoFirestore(); // <-- NOVO: Separado a ligação
+                adicionarEventoFindMe(); // <-- NOVO: Adiciona o clique
             } catch(e) {
                 console.error("Erro geral:", e);
                 mostrarFeedback('error', 'Ocorreu um erro ao carregar a aplicação.');
             }
         };
+
+        // --- 7. Função de Ligação ao Firestore ---
+        function conectarAoFirestore() {
+            const q = query(collection(db, "ocorrencias"));
+            onSnapshot(q, (snapshot) => {
+                todosOsDados = []; 
+                let tiposExistentes = Object.keys(filtrosTipo);
+                
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    todosOsDados.push(data); 
+                    if (data.tipo && !tiposExistentes.includes(data.tipo)) {
+                        filtrosTipo[data.tipo] = true; 
+                    }
+                });
+                aplicarFiltrosEAtualizarDashboard(); 
+                if (todosOsDados.length === 0) {
+                    mostrarFeedback('info', 'Nenhuma ocorrência encontrada.');
+                } else {
+                    feedbackMsg.classList.add('hidden'); 
+                }
+            }, (error) => {
+                console.error("Erro ao ligar ao Firestore: ", error);
+                mostrarFeedback('error', `Não foi possível ligar à base de dados. <br><small>Verifique as regras do Firestore.</small>`);
+            });
+        }
+
+        // --- 8. NOVO: Função para o Botão "Onde estou?" ---
+        function adicionarEventoFindMe() {
+            findMeBtn.addEventListener('click', () => {
+                if ('geolocation' in navigator) {
+                    findMeBtn.disabled = true;
+                    findMeBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> A localizar...';
+                    
+                    navigator.geolocation.getCurrentPosition((posicao) => {
+                        const userPos = {
+                            lat: posicao.coords.latitude,
+                            lng: posicao.coords.longitude
+                        };
+                        
+                        // Foca o mapa na localização do utilizador
+                        mapa.setCenter(userPos);
+                        mapa.setZoom(17); // Dá zoom
+
+                        // Adiciona ou move o pino azul "Você está aqui"
+                        if (userLocationMarker) {
+                            userLocationMarker.setPosition(userPos);
+                        } else {
+                            userLocationMarker = new google.maps.Marker({
+                                position: userPos,
+                                map: mapa,
+                                icon: icons["User"],
+                                title: "Você está aqui"
+                            });
+                        }
+                        
+                        findMeBtn.disabled = false;
+                        findMeBtn.innerHTML = '<i class="fas fa-location-crosshairs mr-2"></i> Onde estou?';
+
+                    }, (erro) => {
+                        console.error("Erro ao localizar:", erro);
+                        alert("Não foi possível obter a sua localização. Verifique as permissões.");
+                        findMeBtn.disabled = false;
+                        findMeBtn.innerHTML = '<i class="fas fa-location-crosshairs mr-2"></i> Onde estou?';
+                    });
+                } else {
+                    alert("Geolocalização não é suportada neste navegador.");
+                }
+            });
+        }
         
         // Torna a função initMap acessível globalmente
         window.initMap = initMap;
