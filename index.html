@@ -81,9 +81,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
                 
-                <!-- ############################################# -->
-                <!-- ### NOVO: Botão "Onde estou?" ### -->
-                <!-- ############################################# -->
+                <!-- Botão "Onde estou?" (V4) -->
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold scc-text-blue">Mapa de Ocorrências</h2>
                     <button id="find-me-btn" class="flex items-center px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded-lg shadow-sm hover:bg-blue-50 transition-colors">
@@ -91,7 +89,6 @@
                         Onde estou?
                     </button>
                 </div>
-                <!-- ############################################# -->
 
                 <div id="mapa"></div>
             </div>
@@ -108,15 +105,25 @@
         </div>
     </div>
 
-    <!-- ############################################# -->
-    <!-- ### NOVO: Botão Flutuante "Reportar" ### -->
-    <!-- ############################################# -->
+    <!-- ############################################################### -->
+    <!-- ### NOVO: Botão Flutuante "Reportar" (V4.1 com Rótulo) ### -->
+    <!-- ############################################################### -->
     <a href="reportar-ocorrencia.html" 
        title="Reportar Ocorrência"
-       class="fixed bottom-6 right-6 w-16 h-16 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition-transform transform hover:scale-110">
-        <i class="fas fa-plus fa-2x"></i>
+       class="fixed bottom-6 right-6 flex flex-col items-center group no-underline transition-transform transform hover:scale-105"
+       style="text-decoration: none;"> <!-- Força a remoção do sublinhado -->
+        
+        <!-- O Rótulo de Texto (em vermelho, com sombra branca para legibilidade) -->
+        <span class="text-red-600 text-sm font-bold mb-1" style="text-shadow: 0 0 5px white, 0 0 5px white, 0 0 5px white;">
+            Nova Ocorrência
+        </span>
+        
+        <!-- O Botão Círculo -->
+        <div class="w-16 h-16 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg group-hover:bg-red-700 transition-colors">
+            <i class="fas fa-plus fa-2x"></i>
+        </div>
     </a>
-    <!-- ############################################# -->
+    <!-- ############################################################### -->
 
     
     <!-- SDKs do Firebase (Módulos v9) -->
@@ -149,7 +156,7 @@
         let mapa = null; 
         let googleMarkers = []; 
         let infoWindow = null; 
-        let userLocationMarker = null; // <-- NOVO: Marcador para "Onde estou?"
+        let userLocationMarker = null; 
 
         // --- Variáveis de Lógica ---
         let todosOsDados = [];
@@ -168,7 +175,7 @@
             "Pendente": iconUrlBase + "red-dot.png",
             "Em Andamento": iconUrlBase + "yellow-dot.png",
             "Resolvido": iconUrlBase + "green-dot.png",
-            "User": iconUrlBase + "blue-dot.png" // <-- NOVO: Ícone para o utilizador
+            "User": iconUrlBase + "blue-dot.png" 
         };
 
         // --- 1. Função de Feedback ---
@@ -295,7 +302,7 @@
                         maintainAspectRatio: true,
                         plugins: {
                             legend: {
-                                // A TUA LÓGICA DE FILTRO (com "tracejado")
+                                // A LÓGICA DE FILTRO (com "tracejado")
                                 onClick: (e, legendItem, legend) => {
                                     legendItem.hidden = !legendItem.hidden;
                                     filtrosStatus[legendItem.text] = !legendItem.hidden; 
@@ -376,12 +383,12 @@
             totalMetric = document.getElementById('total-metric');
             pendenteMetric = document.getElementById('pendente-metric');
             resolvidoMetric = document.getElementById('resolvido-metric');
-            findMeBtn = document.getElementById('find-me-btn'); // <-- NOVO: Pega no botão
+            findMeBtn = document.getElementById('find-me-btn'); 
             
             try {
                 inicializarMapa(); 
-                conectarAoFirestore(); // <-- NOVO: Separado a ligação
-                adicionarEventoFindMe(); // <-- NOVO: Adiciona o clique
+                conectarAoFirestore(); 
+                adicionarEventoFindMe(); 
             } catch(e) {
                 console.error("Erro geral:", e);
                 mostrarFeedback('error', 'Ocorreu um erro ao carregar a aplicação.');
@@ -414,7 +421,7 @@
             });
         }
 
-        // --- 8. NOVO: Função para o Botão "Onde estou?" ---
+        // --- 8. Função para o Botão "Onde estou?" ---
         function adicionarEventoFindMe() {
             findMeBtn.addEventListener('click', () => {
                 if ('geolocation' in navigator) {
@@ -427,11 +434,9 @@
                             lng: posicao.coords.longitude
                         };
                         
-                        // Foca o mapa na localização do utilizador
                         mapa.setCenter(userPos);
-                        mapa.setZoom(17); // Dá zoom
+                        mapa.setZoom(17); 
 
-                        // Adiciona ou move o pino azul "Você está aqui"
                         if (userLocationMarker) {
                             userLocationMarker.setPosition(userPos);
                         } else {
@@ -448,12 +453,13 @@
 
                     }, (erro) => {
                         console.error("Erro ao localizar:", erro);
-                        alert("Não foi possível obter a sua localização. Verifique as permissões.");
+                        // NÃO USAR ALERT()
+                        mostrarFeedback('error', 'Não foi possível obter a sua localização. Verifique as permissões.');
                         findMeBtn.disabled = false;
                         findMeBtn.innerHTML = '<i class="fas fa-location-crosshairs mr-2"></i> Onde estou?';
                     });
                 } else {
-                    alert("Geolocalização não é suportada neste navegador.");
+                    mostrarFeedback('error', 'Geolocalização não é suportada neste navegador.');
                 }
             });
         }
