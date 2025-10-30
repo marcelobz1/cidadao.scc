@@ -165,7 +165,7 @@
         let infoWindow = null; 
         let userLocationMarker = null; 
 
-        // --- Variáveis de Lógica ---
+        // --- Variáveis de Lógica (do teu V3 funcional) ---
         let todosOsDados = [];
         let filtrosStatus = { "Pendente": true, "Em Andamento": true, "Resolvido": true };
         let filtrosTipo = {}; 
@@ -407,7 +407,7 @@
 
         // --- 6. LIGAR AO FIREBASE (Ponto de Entrada) ---
         // #############################################
-        // ### A CORREÇÃO DE "CRASH" ESTÁ AQUI (window.onload) ###
+        // ### A CORREÇÃO DE "CRASH" (window.onload) ###
         // #############################################
         // Usa a tua lógica V3 que espera TUDO carregar
         window.onload = () => {
@@ -441,14 +441,16 @@
                     const data = doc.data();
                     todosOsDados.push(data); 
                     if (data.tipo && !tiposExistentes.includes(data.tipo)) {
-                        filtrosTipo[data.tipo] = true; 
+                        // Se o filtro não existir, cria-o como 'true' (ativo)
+                        // Esta é a linha que faltava no teu V3, que inicializa o filtro de tipo
+                        filtrosTipo[data.tipo] = filtrosTipo[data.tipo] === undefined ? true : filtrosTipo[data.tipo];
                     }
                 });
 
                 // Cria os gráficos na primeira vez
                 // (Isto estava a faltar na minha versão "crashada")
-                if (!graficoStatus) criarGraficoStatus(todosOsDados);
-                if (!graficoTipos) criarGraficoTipos(todosOsDados);
+                if (!graficoStatus) atualizarGraficoStatus(todosOsDados);
+                if (!graficoTipos) atualizarGraficoTipos(todosOsDados);
 
                 aplicarFiltrosEAtualizarDashboard(); 
                 if (todosOsDados.length === 0) {
@@ -506,18 +508,16 @@
             });
         }
         
-        // REMOVIDO: window.initMap (não é mais necessário)
-
     </script>
     
     <!-- 
     SCRIPT DO GOOGLE MAPS
     #############################################
-    ### A CORREÇÃO ESTÁ AQUI: REMOVIDO 'callback=initMap' e 'defer' ###
+    ### A CORREÇÃO DE "CRASH" (REMOVIDO 'callback=initMap') ###
     #############################################
     Apenas carregamos o script. O 'window.onload' vai tratar de o usar.
     -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOOXahjFFUioJ0V7aRAhR6h8cOdyYs-oc&v=weekly" async></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOOXahjFFUioJ0V7aRAhR6h8cOdyYs-oc&v=weekly" async defer></script>
 
 </body>
 </html>
