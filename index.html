@@ -32,7 +32,7 @@
 
     <div class="max-w-7xl mx-auto p-4 md:p-8">
         
-        <!-- Cabeçalho -->
+        <!-- Cabeçalho (igual) -->
         <header class="scc-bg-blue p-6 rounded-lg shadow-lg mb-8">
             <div class="flex items-center justify-between">
                 <div>
@@ -46,46 +46,55 @@
             </div>
         </header>
 
-        <!-- Feedback -->
+        <!-- Feedback (igual) -->
         <div id="feedback-msg" class="mb-6 p-4 rounded-lg text-center font-medium bg-blue-100 text-blue-700 animate-pulse">
             <i class="fas fa-spinner fa-spin mr-2"></i>
             A ligar à base de dados...
         </div>
 
-        <!-- Métricas (V4.2) -->
+        <!-- ############################################# -->
+        <!-- ### MÉTRICAS (TWEAK 2: RESPONSIVIDADE) ### -->
+        <!-- ############################################# -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+             <!-- ATUALIZADO: p-4 md:p-6 (mais pequeno no telemóvel) -->
              <div class="bg-white p-4 md:p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Total de Ocorrências</span>
+                    <!-- ATUALIZADO: text-2xl md:text-3xl (mais pequeno no telemóvel) -->
                     <p id="total-metric" class="text-2xl md:text-3xl font-bold scc-text-blue">...</p>
                 </div>
                 <i class="fas fa-bullhorn fa-2x text-gray-300"></i>
             </div>
+            <!-- ATUALIZADO: p-4 md:p-6 -->
              <div class="bg-white p-4 md:p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Pendentes</span>
+                    <!-- ATUALIZADO: text-2xl md:text-3xl -->
                     <p id="pendente-metric" class="text-2xl md:text-3xl font-bold text-red-600">...</p>
                 </div>
                 <i class="fas fa-clock fa-2x text-gray-300"></i>
             </div>
+            <!-- ATUALIZADO: p-4 md:p-6 -->
              <div class="bg-white p-4 md:p-6 rounded-lg shadow-md flex items-center justify-between">
                 <div>
                     <span class="text-sm font-medium text-gray-500">Resolvidos</span>
+                    <!-- ATUALIZADO: text-2xl md:text-3xl -->
                     <p id="resolvido-metric" class="text-2xl md:text-3xl font-bold scc-text-green">...</p>
                 </div>
                 <i class="fas fa-check-circle fa-2x text-gray-300"></i>
             </div>
         </div>
+        <!-- ############################################# -->
 
 
         <!-- Mapa e Gráficos -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
                 
-                <!-- Botão "Onde estou?" (V4.3) -->
+                <!-- Botão "Onde estou?" (V4) -->
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold scc-text-blue">Mapa de Ocorrências</h2>
-                    <button id="find-me-btn" class="flex items-center px-4 py-2 bg-yellow-100 text-yellow-800 border border-yellow-300 rounded-lg shadow-sm hover:bg-yellow-200 transition-colors">
+                    <button id="find-me-btn" class="flex items-center px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded-lg shadow-sm hover:bg-blue-50 transition-colors">
                         <i class="fas fa-location-crosshairs mr-2"></i>
                         Onde estou?
                     </button>
@@ -95,17 +104,24 @@
             </div>
             <div class="space-y-6">
                 
-                <!-- Gráficos (V4.2 com texto de ajuda) -->
+                <!-- ############################################# -->
+                <!-- ### GRÁFICOS (TWEAK 1: TEXTO DE AJUDA) ### -->
+                <!-- ############################################# -->
                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <!-- ATUALIZADO: mb-1 (espaçamento) -->
                     <h2 class="text-xl font-semibold mb-1 scc-text-blue">Status Geral</h2>
+                    <!-- NOVO: Texto de ajuda -->
                     <p class="text-xs italic text-gray-500 mb-3">Clique na legenda para filtrar</p>
                     <canvas id="grafico-status"></canvas>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <!-- ATUALIZADO: mb-1 (espaçamento) -->
                     <h2 class="text-xl font-semibold mb-1 scc-text-blue">Tipos de Ocorrência</h2>
+                    <!-- NOVO: Texto de ajuda -->
                     <p class="text-xs italic text-gray-500 mb-3">Clique na legenda para filtrar</p>
                     <canvas id="grafico-tipos"></canvas>
                 </div>
+                <!-- ############################################# -->
             </div>
         </div>
     </div>
@@ -175,25 +191,12 @@
             "Pendente": iconUrlBase + "red-dot.png",
             "Em Andamento": iconUrlBase + "yellow-dot.png",
             "Resolvido": iconUrlBase + "green-dot.png",
-            "User": {
-                path: google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: "#4285F4", 
-                fillOpacity: 1,
-                strokeColor: "white",
-                strokeWeight: 2,
-            }
+            "User": iconUrlBase + "blue-dot.png" 
         };
 
         // --- 1. Função de Feedback ---
         function mostrarFeedback(tipo, mensagem) {
             if (!feedbackMsg) feedbackMsg = document.getElementById('feedback-msg');
-            
-            if (!feedbackMsg) {
-                console.error("Falha ao mostrar feedback, elemento 'feedback-msg' não encontrado.");
-                return;
-            }
-
             feedbackMsg.classList.remove('hidden', 'bg-blue-100', 'text-blue-700', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'animate-pulse');
             if (tipo === 'loading') {
                 feedbackMsg.classList.add('bg-blue-100', 'text-blue-700', 'animate-pulse');
@@ -279,10 +282,9 @@
                 else if (item.status === 'Em Andamento') { emAndamento++; }
                 else { pendentes++; }
             });
-
-            if (totalMetric) totalMetric.textContent = total;
-            if (pendenteMetric) pendenteMetric.textContent = pendentes;
-            if (resolvidoMetric) resolvidoMetric.textContent = resolvidos;
+            totalMetric.textContent = total;
+            pendenteMetric.textContent = pendentes;
+            resolvidoMetric.textContent = resolvidos;
         }
 
         // --- 4. Funções de Criação/Atualização dos Gráficos ---
@@ -299,10 +301,8 @@
                 graficoStatus.data.datasets[0].data = [pendentes, emAndamento, resolvidos];
                 graficoStatus.update();
             } else {
-                const ctxStatus = document.getElementById('grafico-status');
-                if (!ctxStatus) return; 
-                
-                graficoStatus = new Chart(ctxStatus.getContext('2d'), {
+                const ctxStatus = document.getElementById('grafico-status').getContext('2d');
+                graficoStatus = new Chart(ctxStatus, {
                     type: 'doughnut',
                     data: {
                         labels: ['Pendente', 'Em Andamento', 'Resolvido'],
@@ -318,6 +318,7 @@
                         maintainAspectRatio: true,
                         plugins: {
                             legend: {
+                                // A LÓGICA DE FILTRO (com "tracejado")
                                 onClick: (e, legendItem, legend) => {
                                     legendItem.hidden = !legendItem.hidden;
                                     filtrosStatus[legendItem.text] = !legendItem.hidden; 
@@ -353,10 +354,8 @@
                 graficoTipos.data.datasets = datasets;
                 graficoTipos.update();
             } else {
-                const ctxTipos = document.getElementById('grafico-tipos');
-                if (!ctxTipos) return; 
-
-                graficoTipos = new Chart(ctxTipos.getContext('2d'), {
+                const ctxTipos = document.getElementById('grafico-tipos').getContext('2d');
+                graficoTipos = new Chart(ctxTipos, {
                     type: 'bar', 
                     data: {
                         labels: ['Tipos'], 
@@ -386,13 +385,10 @@
         function inicializarMapa() {
             if (mapa) return; 
             const sccCoords = { lat: -7.954, lng: -36.204 }; 
-            const mapElement = document.getElementById('mapa');
-            if (!mapElement) return; 
-            
-            mapa = new google.maps.Map(mapElement, {
+            mapa = new google.maps.Map(document.getElementById('mapa'), {
                 center: sccCoords,
                 zoom: 14,
-                mapTypeId: 'hybrid', 
+                mapTypeId: 'hybrid', // MODO HÍBRIDO (Satélite + Ruas)
                 mapId: "RADAR_CIDADAO_SCC_STYLE" 
             });
         }
@@ -443,8 +439,6 @@
 
         // --- 8. Função para o Botão "Onde estou?" ---
         function adicionarEventoFindMe() {
-            if (!findMeBtn) return; 
-            
             findMeBtn.addEventListener('click', () => {
                 if ('geolocation' in navigator) {
                     findMeBtn.disabled = true;
@@ -465,7 +459,7 @@
                             userLocationMarker = new google.maps.Marker({
                                 position: userPos,
                                 map: mapa,
-                                icon: icons["User"], 
+                                icon: icons["User"],
                                 title: "Você está aqui"
                             });
                         }
@@ -490,13 +484,8 @@
 
     </script>
     
-    <!-- 
-    SCRIPT DO GOOGLE MAPS (com a tua Chave de API)
-    #############################################
-    ### A CORREÇÃO ESTÁ AQUI: REMOVIDO 'async' ###
-    #############################################
-    -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOOXahjFFUioJ0V7aRAhR6h8cOdyYs-oc&callback=initMap&v=weekly" defer></script>
+    <!-- SCRIPT DO GOOGLE MAPS (com a tua Chave de API) -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCOOXahjFFUioJ0V7aRAhR6h8cOdyYs-oc&callback=initMap&v=weekly" async></script>
 
 </body>
 </html>
