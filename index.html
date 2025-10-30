@@ -189,10 +189,7 @@
             }
         };
 
-        // #############################################
-        // ### NOVO: V6 - DADOS DO TEU POLÍGONO KML ###
-        // #############################################
-        // Coordenadas que forneceste: -36.21664...,-7.9498...,0 ...
+        // V6: DADOS DO TEU POLÍGONO KML
         const poligonoBairroCentro = [
           { lat: -7.949892405700667, lng: -36.21664300943785 },
           { lat: -7.943215223432971, lng: -36.21676433973632 },
@@ -200,7 +197,6 @@
           { lat: -7.949706077896568, lng: -36.21870397293382 },
           { lat: -7.949892405700667, lng: -36.21664300943785 } // Fecha o polígono
         ];
-        // #############################################
 
 
         // --- 1. Função de Feedback ---
@@ -415,7 +411,7 @@
             });
 
             // #############################################
-            // ### NOVO: V6 - DESENHA O POLÍGONO ###
+            // ### V7: O TEU POLÍGONO (COM OS AFINOS) ###
             // #############################################
             const bairroPoligono = new google.maps.Polygon({
                 paths: poligonoBairroCentro,
@@ -423,9 +419,24 @@
                 strokeOpacity: 0.9,
                 strokeWeight: 2,
                 fillColor: "#00FFFF", // Ciano
-                fillOpacity: 0.15 // Bem transparente
+                // 1. 20% mais transparente (0.15 -> 0.12)
+                fillOpacity: 0.12 
             });
             bairroPoligono.setMap(mapa);
+
+            // 2. Torna o polígono clicável com o balão
+            // (Usa a InfoWindow global para não conflitar com os pinos)
+            if (!infoWindow) infoWindow = new google.maps.InfoWindow();
+            
+            bairroPoligono.addListener("click", (e) => {
+                infoWindow.setContent(
+                    // O teu texto, com o estilo pastel que pediste
+                    `<div style="font-family: Inter, sans-serif; font-weight: bold; color: #312e81;">Loteamento - São Miguel 1</div>`
+                );
+                // Tenta abrir no local do clique; se não for possível, abre no centro do polígono
+                infoWindow.setPosition(e.latLng || sccCoords); // sccCoords é um fallback
+                infoWindow.open(mapa);
+            });
             // #############################################
         }
 
